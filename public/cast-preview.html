@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cast Preview</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%230E0B16%22/%3E%3Crect x=%223%22 y=%223%22 width=%224%22 height=%224%22 fill=%22%23FF5A4E%22/%3E%3Crect x=%229%22 y=%225%22 width=%224%22 height=%224%22 fill=%22%23FFD25A%22/%3E%3Crect x=%225%22 y=%229%22 width=%224%22 height=%224%22 fill=%22%237CF2FF%22/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #0E0B16; color: #F4EFFA; font: 400 13px/1.6 'Silkscreen', ui-monospace, monospace; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 22px; color: #FF5A4E; margin: 0 0 4px; } .sub { color: #A79DB8; margin: 0 0 18px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
+  .card { background: #1A1526; border: 2px solid #2E2640; border-radius: 14px; overflow: hidden; }
+  canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
+  .name { padding: 10px 12px; font-weight: 700; }
+</style></head>
+<body><div class="wrap">
+  <h1>Your cast in motion</h1>
+  <p class="sub">Standing aim in all directions, running while aiming, then a jump. Hover the grey panel to aim with your mouse. Right: real in-game size.</p>
+  <div class="grid" id="grid"></div>
+</div>
+<script type="module">
+import { loadManifest, CastCharacter } from './js/cast.js';
+const list = await loadManifest();
+const dpr = Math.min(devicePixelRatio || 1, 2);
+const cards = [];
+for (const def of list) {
+  const ch = await new CastCharacter(def).load();
+  const el = document.createElement('article'); el.className = 'card';
+  const cv = document.createElement('canvas'), cw = 360, chH = 220;
+  cv.width = cw * dpr; cv.height = chH * dpr; cv.style.aspectRatio = `${cw}/${chH}`;
+  el.append(cv); el.insertAdjacentHTML('beforeend', `<div class="name">${def.name}</div>`);
+  document.getElementById('grid').append(el);
+  const c = { ch, cv, g: cv.getContext('2d'), cw, chH, hover: null };
+  cv.onpointermove = e => { const r = cv.getBoundingClientRect(); c.hover = { x: (e.clientX - r.left) / r.width * cw, y: (e.clientY - r.top) / r.height * chH }; };
+  cv.onpointerleave = () => c.hover = null;
+  cards.push(c);
+}
+function page(g, x, y, w, h, dark) {
+  g.fillStyle = dark ? '#121417' : '#fff'; g.fillRect(x, y, w, h);
+  g.fillStyle = dark ? '#3A3F48' : '#D5D8DE';
+  for (let ly = y + 20; ly < y + h - 6; ly += 16) g.fillRect(x + 10, ly, w - 20, 8);
+}
+function frame(now) {
+  const t = now / 1000;
+  for (const c of cards) {
+    const { g, cw, chH, ch } = c;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0); g.imageSmoothingEnabled = false;
+    g.fillStyle = '#8E8E8E'; g.fillRect(0, 0, 200, chH);
+    const Z = 3, fx = 100, fy = chH - 14, T = t % 8;
+    // 0-4s: stand and sweep aim through all poses; 4-8s: run while sweeping
+    let aim = -Math.PI / 2 + ((Math.sin(t * 0.9) + 1) / 2) * Math.PI, facing = 1, moving = T >= 3 && T < 6;
+    // 6-8s: jump (rise, top, fall) so the coat-flare frames show
+    const air = T >= 6 && T < 7.4, u = (T - 6) / 1.4, vy = air ? (u < 0.4 ? -500 : u < 0.6 ? 0 : 500) : 0, lift = air ? Math.sin(u * Math.PI) * 30 : 0;
+    if (c.hover && c.hover.x < 200) { aim = Math.atan2(c.hover.y - (fy - 30 * Z), c.hover.x - fx); facing = Math.cos(aim) >= 0 ? 1 : -1; moving = false; }
+    const st = { x: 0, y: -lift, facing, moving, onGround: !air, runT: t, t, vy, aim };
+    g.save(); g.translate(fx, fy); g.scale(Z, Z); ch.draw(g, { ...st, y: -lift * 0.35 }); // smaller hop in the close-up
+    const m = ch.muzzleAt(st); g.fillStyle = '#FFD25A'; g.fillRect(Math.round(m.x) - 1, Math.round(m.y) - 1, 2, 2);
+    g.restore();
+    for (const [sy, dark] of [[0, false], [chH / 2, true]]) {
+      const sx = 206, sw = cw - sx - 6, sh = chH / 2 - 4;
+      g.save(); g.beginPath(); g.rect(sx, sy + 4, sw, sh); g.clip(); page(g, sx, sy + 4, sw, sh, dark);
+      const travel = moving ? Math.sin(t * 1.2) : 0, f2 = moving ? (Math.cos(t * 1.2) >= 0 ? 1 : -1) : facing;
+      ch.draw(g, { ...st, x: sx + sw / 2 + travel * (sw / 2 - 20), y: sy + 4 + 84, facing: f2, aim: f2 > 0 ? st.aim : Math.PI - st.aim });
+      g.restore();
+    }
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></body></html>

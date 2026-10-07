@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0E0B16">
+<title>Wreck the Web</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%230E0B16%22/%3E%3Crect x=%223%22 y=%223%22 width=%224%22 height=%224%22 fill=%22%23FF5A4E%22/%3E%3Crect x=%229%22 y=%225%22 width=%224%22 height=%224%22 fill=%22%23FFD25A%22/%3E%3Crect x=%225%22 y=%229%22 width=%224%22 height=%224%22 fill=%22%237CF2FF%22/%3E%3C/svg%3E">
+</head>
+<body>
+<canvas id="game" aria-label="Game"></canvas>
+
+<section id="menu" class="screen">
+  <div class="menu-inner">
+    <h1 class="logo"><span>WRECK</span><span>THE WEB</span></h1>
+    <p class="tag">Type any website. Then blow it to pieces.</p>
+    <form id="go" class="addr" autocomplete="off">
+      <span class="lock" aria-hidden="true">⌁</span>
+      <input id="url" name="url" type="text" inputmode="url" spellcheck="false" placeholder="wikipedia.org" aria-label="Website address" required>
+      <button type="submit" class="btn primary">Wreck it</button>
+    </form>
+    <p id="error" class="error" role="alert" hidden></p>
+    <div class="examples" id="examples" aria-label="Try one of these">
+      <button data-url="en.wikipedia.org/wiki/Stick_figure">Wikipedia</button>
+      <button data-url="news.ycombinator.com">Hacker News</button>
+      <button data-url="x.com">X</button>
+      <button data-url="github.com">GitHub</button>
+      <button data-url="apple.com">Apple</button>
+      <button data-url="bbc.com">BBC</button>
+    </div>
+    <div class="cast-wrap" id="castWrap" hidden>
+      <div class="packs" id="packs" role="group" aria-label="Character style" hidden></div>
+      <p class="cast-label">Your wrecker</p>
+      <div class="cast" id="cast" role="group" aria-label="Choose your character"></div>
+      <p class="cast-label" id="castEmpty" hidden>No characters in this style yet: you'll play as the stick figure.</p>
+    </div>
+    <dl class="keys desktop-only">
+      <dt>A D</dt><dd>run</dd>
+      <dt>W / Space</dt><dd>jump · hold to go higher · keep holding for jetpack · again to flip</dd>
+      <dt>S</dt><dd>drop through a platform</dd>
+      <dt>Shift</dt><dd>dash (or double-tap A / D) · dash through your own shots to supercharge them, into your grenades to punt them</dd>
+      <dt><svg class="mouse-icon" viewBox="0 0 13 15" width="13" height="15" shape-rendering="crispEdges" role="img" aria-label="Left click"><path fill="var(--hot)" d="M3 1h3v5H1V2h2z"/><path fill="currentColor" d="M3 0h7v1H3zM1 1h2v1H1zM10 1h2v1h-2zM0 2h1v11H0zM12 2h1v11h-1zM1 13h2v1H1zM10 13h2v1h-2zM3 14h7v1H3zM1 6h11v1H1zM6 1h1v5H6z"/></svg></dt><dd>aim + shoot</dd>
+      <dt><svg class="mouse-icon" viewBox="0 0 13 15" width="13" height="15" shape-rendering="crispEdges" role="img" aria-label="Right click"><path fill="var(--hot)" d="M7 1h3v1h2v4H7z"/><path fill="currentColor" d="M3 0h7v1H3zM1 1h2v1H1zM10 1h2v1h-2zM0 2h1v11H0zM12 2h1v11h-1zM1 13h2v1H1zM10 13h2v1h-2zM3 14h7v1H3zM1 6h11v1H1zM6 1h1v5H6z"/></svg><span class="or">/</span>G</dt><dd>grenade</dd>
+      <dt>1–0 - =<span class="or">/</span><svg class="mouse-icon" viewBox="0 0 13 15" width="13" height="15" shape-rendering="crispEdges" role="img" aria-label="Scroll wheel"><path fill="var(--hot)" d="M5 2h3v3H5z"/><path fill="currentColor" d="M3 0h7v1H3zM1 1h2v1H1zM10 1h2v1h-2zM0 2h1v11H0zM12 2h1v11h-1zM1 13h2v1H1zM10 13h2v1h-2zM3 14h7v1H3zM1 6h11v1H1zM6 1h1v1H6zM6 5h1v1H6z"/></svg></dt><dd>switch weapon</dd>
+      <dt>[</dt><dd>call an airstrike on the cursor</dd>
+      <dt>R</dt><dd>save replay clip</dd>
+      <dt>Esc · M</dt><dd>pause · mute</dd>
+    </dl>
+    <p class="keys touch-only">Left stick moves (push up to jump, hold for jetpack). Right stick aims and fires.</p>
+  </div>
+</section>
+
+<section id="loading" class="screen" hidden>
+  <div class="menu-inner center">
+    <div class="spinner" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <p id="loadingText">Rendering the page…</p>
+    <p id="loadingUrl" class="muted"></p>
+  </div>
+</section>
+
+<section id="pause" class="screen dim" hidden>
+  <div class="menu-inner center">
+    <h2>Paused</h2>
+    <p id="pauseStats" class="muted"></p>
+    <div class="stack">
+      <button class="btn primary" data-act="resume">Resume</button>
+      <button class="btn" data-act="clip">Save replay clip</button>
+      <button class="btn" data-act="restart">Restart this site</button>
+      <button class="btn" data-act="mute">Sound: on</button>
+      <button class="btn" data-act="tips">Show tips again</button>
+      <button class="btn" data-act="menu">Main menu</button>
+    </div>
+  </div>
+</section>
+<section id="results" class="screen floating" hidden>
+  <div class="menu-inner center results-card">
+    <button class="results-close" data-act="continue" aria-label="Close and keep playing">&times;</button>
+    <h2 class="results-title">Page destroyed</h2>
+    <dl id="resultsStats" class="results-stats"></dl>
+    <div class="stack">
+      <button class="btn primary" data-act="menu">Wreck another site</button>
+      <button class="btn" data-act="restart">Restart this site</button>
+      <button class="btn" data-act="clip">Save replay clip</button>
+      <button class="btn" data-act="continue">Keep wrecking</button>
+    </div>
+  </div>
+</section>
+
+<div id="touch" hidden>
+  <div class="stick stick-l"><div class="knob"></div></div>
+  <div class="stick stick-r"><div class="knob"></div></div>
+  <button class="tbtn btn-jump" aria-label="Jump">▲</button>
+  <button class="tbtn btn-grenade" aria-label="Grenade">●</button>
+  <button class="tbtn btn-swap" aria-label="Next weapon">⇄</button>
+  <button class="tbtn btn-strike" aria-label="Airstrike">✈</button>
+  <button class="tbtn btn-dash" aria-label="Dash">»</button>
+</div>
+<div id="hudButtons" hidden>
+  <button id="clipBtn" class="hbtn" aria-label="Save replay clip">● Clip</button>
+  <button id="pauseBtn" class="hbtn" aria-label="Pause">II</button>
+</div>
+<div id="toast" role="status" hidden></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

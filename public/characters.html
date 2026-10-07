@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E0B16">
+<title>Pick Your Wrecker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%230E0B16%22/%3E%3Crect x=%223%22 y=%223%22 width=%224%22 height=%224%22 fill=%22%23FF5A4E%22/%3E%3Crect x=%229%22 y=%225%22 width=%224%22 height=%224%22 fill=%22%23FFD25A%22/%3E%3Crect x=%225%22 y=%229%22 width=%224%22 height=%224%22 fill=%22%237CF2FF%22/%3E%3C/svg%3E">
+<style>
+  :root { --bg: #0E0B16; --panel: #1A1526; --line: #2E2640; --ink: #F4EFFA; --muted: #A79DB8; --hot: #FF5A4E; --gold: #FFD25A;
+          --pixel: 'Silkscreen', ui-monospace, Menlo, monospace; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 13px/1.6 var(--pixel); }
+  button { font-family: var(--pixel); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+  header.top { position: sticky; top: 0; z-index: 5; background: rgb(14 11 22 / .92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 14px 0; }
+  h1 { font-size: 22px; margin: 0; font-weight: 700; color: var(--hot); text-shadow: 3px 3px 0 #6E1D2B; }
+  .picks { flex: 1 1 300px; color: var(--muted); min-width: 0; }
+  .picks b { color: var(--gold); font-weight: 700; }
+  .btn { font-size: 12px; border: 0; border-radius: 9px; padding: 9px 13px; cursor: pointer; background: var(--hot); color: #fff; box-shadow: inset 0 -3px 0 rgb(0 0 0 / .3); }
+  .btn.ghost { background: var(--panel); color: var(--ink); }
+  section { padding: 26px 0 8px; }
+  h2 { font-size: 18px; margin: 0 0 4px; font-weight: 700; }
+  .sub { color: var(--muted); margin: 0 0 16px; max-width: 760px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .lineup { display: block; width: 100%; height: auto; image-rendering: pixelated; background: #8E8E8E; border-radius: 14px; }
+  .card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; overflow: hidden; transition: border-color .15s; }
+  .card.on { border-color: var(--gold); }
+  .card canvas { display: block; width: 100%; height: auto; background: #151020; cursor: crosshair; }
+  .meta { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px 12px; }
+  .meta .txt { flex: 1; min-width: 0; }
+  .num { color: var(--gold); font-weight: 700; }
+  .name { font-weight: 700; }
+  .blurb { color: var(--muted); font-size: 11px; line-height: 1.5; margin-top: 2px; }
+  .pick { flex-shrink: 0; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 999px; padding: 6px 11px; font-size: 11px; cursor: pointer; }
+  .card.on .pick { background: var(--gold); color: #1A1526; border-color: var(--gold); }
+  .small .meta { padding: 8px 10px 10px; }
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; }
+  footer { color: var(--muted); padding: 30px 0 50px; }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap bar">
+  <h1>Pick your wrecker</h1>
+  <div class="picks" id="picks">Tap <b>Pick</b> on the ones you like.</div>
+  <button class="btn ghost" id="clear">Clear</button>
+  <button class="btn" id="copy">Copy my picks</button>
+</div></header>
+<main class="wrap">
+  <section>
+    <h2>Round 1 · AI-generated, realistic</h2>
+    <p class="sub">Made with PixelLab: real proportions, shaded clothes, side view. Left: zoomed 4x. Right: actual in-game size (about 48px, 3 lines of text) on a light and a dark page. Pick the ones you like; I'll animate those (idle, run, jump) and make more in the same style.</p>
+    <div class="grid" id="cards"></div>
+  </section>
+  <footer>Tell me the numbers (or paste your copied picks).</footer>
+</main>
+<div id="toast" hidden></div>
+<script type="module" src="js/gallery.js"></script>
+</body>
+</html>
