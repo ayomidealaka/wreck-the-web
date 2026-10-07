@@ -56,8 +56,8 @@ a metro city at night, a desert canyon or the deep ocean, one per site and never
 hit points that grow with their size; bullets carve a short tunnel into them, they crack at 30/55/80% and come loose
 as one falling slab once their hit points run out or 38% of them has been carved away. Cards and sections work the
 same way and take their contents with them when they fall. A slab that is shot while falling shatters. The page
-counts as destroyed once 90% of its letters and 60% of its content are gone (capped at 2,400 letters and 480,000
-grid cells, so a huge page needs no more than a big one); the results float over the page and you can keep going.
+counts as destroyed once 90% of its letters and 90% of its content are gone; the results float over the page and
+you can keep going.
 
 **Feel.** Fixed 60Hz steps, tiered screen shake, hot rims that cool on fresh holes, soft scorch round blasts, lighter
 effects on machines that can't keep up, and a replay buffer: two staggered `MediaRecorder`s keep the last 20–40s
