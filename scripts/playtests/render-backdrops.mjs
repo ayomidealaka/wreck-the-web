@@ -1,4 +1,4 @@
-// Renders each of the four worlds on its own (no page over it), 1280 wide by 1400 tall, for a look at them.
+// Renders each of the four worlds on its own (no page over it), a 1280x800 view, for a look at them.
 // usage: node scripts/playtests/render-backdrops.mjs <out>
 import puppeteer from 'puppeteer-core';
 import fs from 'node:fs';
@@ -7,10 +7,10 @@ const [OUT] = process.argv.slice(2);
 const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true });
 const p = await b.newPage(); p.on('pageerror', e => console.log('ERR', e.message));
 await p.goto('http://localhost:4600/', { waitUntil: 'domcontentloaded' });
-for (const theme of ['country', 'city', 'desert', 'ocean']) {
+for (const theme of ['synth', 'dusk', 'sunny', 'space']) {
   const data = await p.evaluate(async theme => {
     const { Backdrop } = await import('/js/backdrop.js');
-    const W = 1280, H = 1400, B = new Backdrop(W, H, 7, { theme }); B.reveal(0, H);
+    const W = 1280, H = 800, B = new Backdrop(W, 6000, 7, { theme });
     const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
     B.draw(g, { x: 0, y: 0, w: W, h: H });
     return c.toDataURL('image/png');

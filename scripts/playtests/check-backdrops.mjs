@@ -8,7 +8,7 @@ const p = await b.newPage(); const errs = [];
 p.on('pageerror', e => errs.push('PAGEERROR ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text().slice(0, 160)); });
 await p.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
 const wait = ms => new Promise(r => setTimeout(r, ms));
-for (const theme of ['country', 'city', 'desert', 'ocean']) {
+for (const theme of ['synth', 'dusk', 'sunny', 'space']) {
   await p.goto(`http://localhost:4600/?debug&pack=test&bg=${theme}&url=` + encodeURIComponent('en.wikipedia.org/wiki/Stick_figure'), { waitUntil: 'domcontentloaded' });
   await p.waitForFunction(() => document.querySelector('#loading').hidden && document.querySelector('#menu').hidden, { timeout: 120000 });
   await wait(1200);
@@ -17,9 +17,8 @@ for (const theme of ['country', 'city', 'desert', 'ocean']) {
   const t0 = performance.now();
   const info = await p.evaluate(() => { const g = window.__game(), pl = g.player; g.arsenal.nuke(pl.x + 380, pl.y - 40); g.arsenal.nuke(pl.x + 380, pl.y + 300); return { theme: g.backdrop.theme, night: g.backdrop.night }; });
   await wait(1800);
-  const gen = await p.evaluate(() => { const g = window.__game(), t = performance.now(); for (const i of g.backdrop.open) g.backdrop.tile(i); return Math.round(performance.now() - t); });
   await p.screenshot({ path: `${OUT}/bg_${theme}.png` });
-  console.log(theme, JSON.stringify(info), `tiles cached in ${gen}ms (after first draw)`);
+  console.log(theme, JSON.stringify(info));
 }
 // the pick: never the same one twice running
 await p.goto('http://localhost:4600/?debug&url=' + encodeURIComponent('en.wikipedia.org/wiki/Stick_figure'), { waitUntil: 'domcontentloaded' });

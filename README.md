@@ -48,9 +48,9 @@ running the game never touches the target site.
 never read back. A copy of the untouched page stays in main memory for the things that need pixels: letters are cut
 out of it when they pop, and a colour table (one colour per 4px block) colours debris and dust. The boxes become a 2px
 grid: letters, images and controls are content you can stand on and shoot; styled boxes are ledges; backgrounds let
-shots through. Explosions punch pixel holes in anything and reveal a generated world underneath: open countryside,
-a metro city at night, a desert canyon or the deep ocean, one per site and never the same one twice running
-(`?bg=city` forces one). The countryside turns to night on dark pages; the others dim.
+shots through. Behind the page sits a pixel-art scene in parallax layers, seen through the holes: a synthwave city,
+mountains at dusk, sunny hills or deep space, one per site and never the same one twice running (`?bg=synth`
+forces one).
 
 **Breaking things.** Letters go in one hit and fly off as their own cut-outs. Images, buttons and other elements have
 hit points that grow with their size; bullets carve a short tunnel into them, they crack at 30/55/80% and come loose
