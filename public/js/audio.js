@@ -323,8 +323,26 @@ export class Audio {
     const now = this.ctx.currentTime; if (now - this.lastPop < 0.035) return; this.lastPop = now;
     this.noise_({ type: 'bandpass', f0: 2500 + Math.random() * 2500, q: 2, d: 0.03, peak: 0.12, verb: 0.05 });
   }
-  jump(p = 1) { if (this.ok()) { this.noise_({ type: 'lowpass', f0: 500, d: 0.06, peak: 0.15 }); this.osc({ type: 'triangle', f0: 180 * p, f1: 360 * p, d: 0.08, peak: 0.06 }); } }
-  land() { if (this.ok()) this.noise_({ type: 'lowpass', f0: 380, q: 0.7, d: 0.09, peak: 0.3 }); }
+  jump() { // pushing off the ground: a short, dull thud from the legs and a scuff of grit
+    if (!this.ok()) return;
+    const p = 0.92 + Math.random() * 0.16;
+    this.osc({ type: 'sine', f0: 140 * p, f1: 55 * p, d: 0.08, peak: 0.34, verb: 0.05 });
+    this.noise_({ type: 'lowpass', f0: 700 * p, f1: 250, q: 0.7, d: 0.05, peak: 0.16, verb: 0.05 });
+  }
+  flipJump() { this.ok() && this.noise_({ type: 'bandpass', f0: 500, f1: 1600, q: 0.9, d: 0.16, peak: 0.2, verb: 0.1 }); } // the air jump: a whoosh, no ground to push off
+  land(k = 0.5) { // boots hitting the ground: k = how hard (0..1), louder and deeper the harder the fall
+    if (!this.ok()) return;
+    const p = (1.1 - k * 0.25) * (0.94 + Math.random() * 0.12), v = 0.35 + k * 0.65;
+    this.osc({ type: 'sine', f0: 120 * p, f1: 38 * p, d: 0.1 + k * 0.08, peak: 0.55 * v, verb: 0.08 });
+    this.noise_({ type: 'lowpass', f0: 600 * p, f1: 180, q: 0.7, d: 0.07 + k * 0.06, peak: 0.32 * v, verb: 0.08 });
+    if (k > 0.6) this.noise_({ type: 'bandpass', f0: 1800 + Math.random() * 900, q: 1.5, d: 0.04, peak: 0.08 * k, t: 0.015 }); // grit
+  }
+  step(k = 1) { // a footstep while running: a soft heel thump and a scuff, a little different every time
+    if (!this.ok()) return;
+    const p = 0.88 + Math.random() * 0.24;
+    this.osc({ type: 'sine', f0: 105 * p, f1: 55 * p, d: 0.045, peak: 0.2 * k, verb: 0.03 });
+    this.noise_({ type: 'lowpass', f0: 1100 * p, f1: 350, q: 0.8, d: 0.035, peak: 0.1 * k, verb: 0.03 });
+  }
   // a round punching through bare paper: a dry papery tick (rate-limited, the minigun lands ~20 a second)
   // the cluster shell's chute popping / splitting open
   split() { if (this.ok()) { this.noise_({ type: 'bandpass', f0: 1800, f1: 600, q: 1.2, d: 0.12, peak: 0.3 }); this.osc({ type: 'square', f0: 900, f1: 300, d: 0.08, peak: 0.12 }); } }

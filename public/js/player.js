@@ -78,7 +78,15 @@ export class Player {
     if (this.sprite.weaponPort) return this.sprite.weaponPort(this.spriteState(), this.weapon);
     return this.sprite.weaponPoint ? this.sprite.weaponPoint(this.spriteState(), this.weapon, this.weapon.art.port) : null;
   }
-    push(vx, vy) { this.vx += vx; this.vy += vy; if (vy < -50) { this.onGround = false; this.drop = 0.05; } }
+  // touching down at this.vy: a crouch, a thud and dust scaled by how hard (a run off a low ledge makes none)
+  landed(ground, fx, audio) {
+    const v = this.vy, k = Math.min(1, Math.max(0, (v - 150) / 1000));
+    this.landT = Math.max(this.landT, v > 500 ? 0.14 : 0.1);
+    if (v > 150) audio.land(k);
+    if (v > 200) fx.dust(this.x, ground, Math.round(4 + k * 10), 0.6 + k * 1.4, this.level.colorAt(this.x, ground + 1));
+    if (v > 1200) fx.kick('small');
+  }
+  push(vx, vy) { this.vx += vx; this.vy += vy; if (vy < -50) { this.onGround = false; this.drop = 0.05; } }
 
   update(dt, inp, fx, audio) {
     const L = this.level;
@@ -129,10 +137,12 @@ export class Player {
     if (this.buffer > 0 && (this.onGround || this.coyote > 0)) {
       this.vy = -JUMP; this.buffer = 0; this.coyote = 0; this.jumps = 1; this.onGround = false;
       this.boost = BOOST; this.held = 0;
-      fx.debris(this.x, this.y, ['#ffffff', '#cccccc'], 5, 90, -Math.PI / 2); audio.jump();
+      fx.dust(this.x, this.y, 5, 0.7, L.colorAt(this.x, this.y + 1)); audio.jump();
     } else if (this.buffer > 0 && !this.onGround && this.jumps < 2) {
       this.vy = -DJUMP; this.buffer = 0; this.jumps = 2; this.flip = 1; this.flipDir = this.vx >= 0 ? 1 : -1;
-      this.boost = BOOST; this.held = 0; audio.jump(1.4);
+      this.boost = BOOST; this.held = 0; audio.flipJump();
+      fx.dust(this.x, this.y + 2, 7, 0.9, '#ffffff', -0.6);                         // a puff of air pushed down
+      fx.rings.push({ x: this.x, y: this.y + 2, r: 4, max: 26, t: 0, dur: 0.22, w: 2, alpha: 0.55 });
     } else if (inp.jumpPressed && !this.onGround && this.jumps >= 2) {
       this.held = BOOST; this.buffer = 0; // out of jumps: a fresh press-and-hold goes straight to the jetpack
     }
@@ -182,8 +192,7 @@ export class Player {
         if (top < prev - 0.5) continue;
         for (let c = c0; c <= c1; c++) {
           if (L.cellSolid(c, r)) {
-            if (!was) this.landT = Math.max(this.landT, 0.1);
-            if (!was && this.vy > 500) { this.landT = 0.14; fx.debris(this.x, top, ['#ffffff', '#bbbbbb'], 6, this.vy * 0.15, -Math.PI / 2); audio.land(); }
+            if (!was) this.landed(top, fx, audio);
             this.y = top; this.vy = 0; this.onGround = true; this.jumps = 0; this.flip = 0; this.boost = 0;
             break outer;
           }
@@ -193,8 +202,7 @@ export class Player {
     // the bottom edge of the page is solid ground (feet on the line where the page meets the backdrop): you can't fall
     // off the page, not even by dropping through a platform
     if (this.y >= L.H && this.vy >= 0) {
-      if (!was) this.landT = Math.max(this.landT, 0.1);
-      if (!was && this.vy > 500) { this.landT = 0.14; fx.debris(this.x, L.H, ['#ffffff', '#bbbbbb'], 6, this.vy * 0.15, -Math.PI / 2); audio.land(); }
+      if (!was) this.landed(L.H, fx, audio);
       this.y = L.H; this.vy = 0; this.onGround = true; this.jumps = 0; this.flip = 0; this.boost = 0;
     }
     // step up onto slightly taller glyphs (capitals next to lowercase) instead of sinking into them
@@ -209,6 +217,15 @@ export class Player {
     if (this.onGround) this.airDashes = 0;
     this.t = (this.t || 0) + dt;
     if (this.onGround) { this.phase += Math.abs(this.vx) * dt * 0.05; this.runT += dt * Math.min(1.2, Math.abs(this.vx) / RUN); }
+    // footsteps: one each time a boot lands in the run cycle, with a little dust behind it
+    const steps = this.sprite?.footfalls ? this.sprite.footfalls(this.runT) : Math.floor(this.runT * 3.4);
+    if (steps !== this.steps) {
+      if (this.onGround && Math.abs(this.vx) > 60 && this.dashT <= 0) {
+        audio.step(0.6 + 0.4 * Math.min(1, Math.abs(this.vx) / RUN));
+        if (Math.random() < 0.8) fx.dust(this.x - this.facing * 4, this.y, 2, 0.35, L.colorAt(this.x, this.y + 1), 0.6);
+      }
+      this.steps = steps;
+    }
     this.recoil *= Math.pow(0.001, dt);
     this.tickGun(dt);
 

@@ -21,6 +21,8 @@ const KICK = {
 //  5 recovery (leg trailing), 6 heel kicked up to the backside, 7 knee driving forward
 const RUN_KEYS = [[50, 130], [42, 23], [23, 62], [-34, 12], [-34, 27], [-43, 58], [5, 106], [35, 112]];
 const RUN_FLIGHT = [1, 0, 0, 0, 1, 0, 0, 0];
+const RUN_CYCLES = 1.7;   // run cycles per unit of the player's runT
+const HEEL_STRIKE = 1;    // the key where the right heel lands; the left one lands 4 keys later
 // Jump and drop, measured from a reference jump (public/art/ref/jump2): front leg's knee drives up, back leg trails.
 // Chosen by vertical speed (px/s, negative = rising): take-off, rising, apex, falling, about to land. Then the landing crouch.
 const JUMP_KEYS = [
@@ -196,11 +198,13 @@ export class RigCharacter {
   throwHand(st, w) { return this.world(st, this.pose(st, w).handL); }
   weaponPort(st, w) { const a = this.artFor(w).art; return a.port ? this.weaponPoint(st, w, a.port) : null; }
 
+  // heel strikes so far in the run cycle: goes up by one each time a boot lands (the player plays a footstep on it)
+  footfalls(runT) { return Math.floor((runT * RUN_CYCLES * 8 - HEEL_STRIKE) / 4); }
   // the whole pose for this moment: joint positions (drawing coords) and part angles
   pose(st, w) {
     const j = this.j, len = this.len, t = st.t || 0, tablet = w?.id === 'drone', a = tablet ? 0.35 : this.localAim(st);
     const moving = st.onGround && st.moving, air = !st.onGround;
-    const phase = (st.runT || 0) * TAU * 1.7;
+    const phase = (st.runT || 0) * TAU * RUN_CYCLES;
     // hips + torso
     const speed = Math.min(1, st.speed ?? 1), amt = 0.45 + 0.55 * speed;          // walk = a softer version of the run
     let hipY = -(this.hipH - 3) + Math.sin(t * 2.2) * 0.8, lean = 0.04;

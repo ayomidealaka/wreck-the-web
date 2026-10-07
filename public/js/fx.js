@@ -30,6 +30,16 @@ export class FX {
     const c = shade + (Math.random() * 25 | 0);
     this.spark(x, y, vx, vy, `rgba(${c},${c - 4},${c + 6},0.55)`, size, life, { grav: -0.05, drag: 0.04, grow: 10, round: true });
   }
+  // dust kicked up by feet: soft puffs in the colour of what's underfoot that spread sideways, slow down fast, drift up
+  // a little and swell as they fade. spread widens the throw, up how high it rises.
+  dust(x, y, n, spread = 1, color = null, up = 1) {
+    const c = dustColor(color);
+    for (let i = 0; i < n; i++) {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      this.spark(x + (Math.random() - 0.5) * 6, y - 1, side * (25 + Math.random() * 110) * spread, -(8 + Math.random() * 45) * up,
+        c, 4 + Math.random() * 4, 0.35 + Math.random() * 0.4, { grav: -0.008, drag: 0.07, grow: 16, round: true });
+    }
+  }
   // ejected brass / shell casing
   casing(x, y, dir, color = '#D9A63A', w = 3) {
     this.spark(x, y, -dir * (60 + Math.random() * 80), -140 - Math.random() * 90, color, 2, 1.6, { drag: 0.01, spin: (Math.random() - 0.5) * 30, w, bounce: 0.45 });
@@ -247,7 +257,7 @@ export class FX {
   drawAbove(g) {
     for (const r of this.rings) {
       const k = r.t / (r.dur || 0.35);
-      g.strokeStyle = `rgba(255,240,200,${0.5 * (1 - k)})`; g.lineWidth = (r.dur ? 14 : 6) * (1 - k) + 1;
+      g.strokeStyle = `rgba(255,240,200,${(r.alpha ?? 0.5) * (1 - k)})`; g.lineWidth = (r.w ?? (r.dur ? 14 : 6)) * (1 - k) + 1;
       g.beginPath(); g.arc(r.x, r.y, r.r + (r.max - r.r) * k, 0, Math.PI * 2); g.stroke();
     }
     for (const b of this.booms) { // shrinking pixel discs, hot to cool
@@ -293,6 +303,12 @@ export class FX {
 }
 
 const HEAT_TIME = 0.55;
+// dust colour: the ground's colour pulled towards a mid grey-violet, so it reads on white pages and on black ones
+const DUST_MID = [112, 105, 125];
+function dustColor(css) {
+  const m = css && css.match(/\d+/g), c = m ? m.slice(0, 3).map(Number) : [200, 195, 210];
+  return `rgba(${c.map((v, i) => Math.round(v + (DUST_MID[i] - v) * 0.45)).join(',')},0.8)`;
+}
 // white-hot -> yellow -> orange -> dull red as k goes 0..1
 function heatColor(k) {
   const stops = [[255, 250, 220], [255, 214, 90], [255, 128, 34], [170, 40, 20]];
