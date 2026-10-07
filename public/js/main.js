@@ -1,5 +1,5 @@
 import { Level } from './level.js';
-import { Backdrop } from './backdrop.js';
+import { Backdrop, THEMES } from './backdrop.js';
 import { FX } from './fx.js';
 import { Player } from './player.js';
 import { Arsenal, WEAPONS, loadWeaponArt } from './weapons.js';
@@ -19,7 +19,7 @@ const MILESTONES = [0.1, 0.25, 0.5, 0.75];
 // When the page counts as destroyed. Half the score is letters knocked off
 // against 60% of the page's letters (capped at 2400), half is content removed against 30% of it (capped, so a huge
 // page needs no more than a big one); both full = destroyed. The cell cap is in 2px grid cells.
-const LETTER_SHARE = 0.6, LETTER_CAP = 2400, CELL_SHARE = 0.3, CELL_CAP = 480000;
+const LETTER_SHARE = 0.9, LETTER_CAP = 2400, CELL_SHARE = 0.6, CELL_CAP = 480000;
 const WIN_AT = 1;
 const TOUCH_REACH = 500;   // how far out the aim point sits when aiming with the stick
 // the tips checklist: [id, desktop label, touch label]; ticks off as you do each, once, ever (stored per browser)
@@ -207,13 +207,25 @@ const holdOnly = inp => ({ ...inp, ...Object.fromEntries(ONE_SHOT.map(k => [k, f
 // a frame that ran no step hands its presses on to the next one
 const mergeInput = (a, b) => ({ ...b, ...Object.fromEntries(ONE_SHOT.map(k => [k, a[k] || b[k]])), weaponSlot: b.weaponSlot ?? a.weaponSlot });
 
+// Which world hides under this page: one of the four, chosen by the site, never the same one twice running
+// (?bg=city forces one)
+function pickTheme(meta) {
+  const forced = new URLSearchParams(location.search).get('bg');
+  if (THEMES.includes(forced)) return forced;
+  let last = null; try { last = localStorage.getItem('wtw-bg-last'); } catch {}
+  let i = (meta.id ? parseInt(meta.id.slice(6, 12), 16) : Math.floor(Math.random() * 1e6)) % THEMES.length;
+  if (THEMES[i] === last) i = (i + 1 + Math.floor(Math.random() * (THEMES.length - 1))) % THEMES.length;
+  try { localStorage.setItem('wtw-bg-last', THEMES[i]); } catch {}
+  return THEMES[i];
+}
+
 // ------------------------------------------------------------------ game
 class Game {
   constructor(meta, bitmap) {
     this.meta = meta; this.bitmap = bitmap;
     this.level = new Level(meta, bitmap);
     // the world under the page: by night when the page itself is dark
-    this.backdrop = new Backdrop(this.level.W, this.level.H, (meta.id ? parseInt(meta.id.slice(0, 6), 16) : 7) % 997, { night: this.level.lum < 0.4 });
+    this.backdrop = new Backdrop(this.level.W, this.level.H, (meta.id ? parseInt(meta.id.slice(0, 6), 16) : 7) % 997, { night: this.level.lum < 0.4, theme: pickTheme(meta) });
     this.fx = new FX(this.level);
     this.audio = audio;
     this.player = new Player(this.level, Math.min(this.level.W * 0.3, 360), -60);

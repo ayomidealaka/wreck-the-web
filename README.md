@@ -48,15 +48,16 @@ running the game never touches the target site.
 never read back. A copy of the untouched page stays in main memory for the things that need pixels: letters are cut
 out of it when they pop, and a colour table (one colour per 4px block) colours debris and dust. The boxes become a 2px
 grid: letters, images and controls are content you can stand on and shoot; styled boxes are ledges; backgrounds let
-shots through. Explosions punch pixel holes in anything and reveal a generated world underneath, by day on light
-pages and by night on dark ones.
+shots through. Explosions punch pixel holes in anything and reveal a generated world underneath: open countryside,
+a metro city at night, a desert canyon or the deep ocean, one per site and never the same one twice running
+(`?bg=city` forces one). The countryside turns to night on dark pages; the others dim.
 
 **Breaking things.** Letters go in one hit and fly off as their own cut-outs. Images, buttons and other elements have
 hit points that grow with their size; bullets carve a short tunnel into them, they crack at 30/55/80% and come loose
 as one falling slab once their hit points run out or 38% of them has been carved away. Cards and sections work the
 same way and take their contents with them when they fall. A slab that is shot while falling shatters. The page
-counts as destroyed once 60% of its letters and 30% of its content are gone; the results float over the page and
-you can keep going.
+counts as destroyed once 90% of its letters and 60% of its content are gone (capped at 2,400 letters and 480,000
+grid cells, so a huge page needs no more than a big one); the results float over the page and you can keep going.
 
 **Feel.** Fixed 60Hz steps, tiered screen shake, hot rims that cool on fresh holes, soft scorch round blasts, lighter
 effects on machines that can't keep up, and a replay buffer: two staggered `MediaRecorder`s keep the last 20–40s
