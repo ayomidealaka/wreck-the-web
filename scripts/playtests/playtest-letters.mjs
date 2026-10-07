@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer-core';
 setTimeout(() => { console.log('TIMEOUT'); process.exit(1); }, 150000);
-const [OUT, site = 'apple.com'] = process.argv.slice(2);
+const [OUT, site = 'ohentpay.com'] = process.argv.slice(2);
 const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
 const p = await b.newPage(); const errs = [];
 p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
