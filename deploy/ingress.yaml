@@ -1,0 +1,32 @@
+# HTTP-01 through ingress-nginx: retrodeep.app's DNS is on Route 53, so the Cloudflare DNS-01 issuer doesn't apply.
+# This host takes precedence over the retrodeep-tunnel ingress's *.retrodeep.app wildcard.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wreck-the-web
+  namespace: wreck-the-web
+  labels:
+    app.kubernetes.io/name: wreck-the-web
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # a render can wait up to a minute for a slot and then take up to 45s
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - wreck-the-web.retrodeep.app
+      secretName: wreck-the-web-tls
+  rules:
+    - host: wreck-the-web.retrodeep.app
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wreck-the-web
+                port:
+                  number: 80

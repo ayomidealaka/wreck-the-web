@@ -1,0 +1,62 @@
+# The server renders whatever website a stranger types in, in a real browser. This policy is what keeps that browser
+# on the public web: whatever a page tries (redirects, DNS rebinding, popups, workers, IPv4 hidden in IPv6), the pod
+# can only reach public IPv4 addresses on 80 and 443, plus cluster DNS. Nothing in the cluster (pods 10.42/16,
+# services 10.43/16, the API server, the kubelet), on the node's private networks, or link-local (cloud metadata).
+#
+# The node's own public IP stays reachable on 80/443 only, which is just ingress-nginx serving the cluster's public
+# sites (so they can be wrecked too). The kubelet (10250), the API server (6443) and anything else on the node is
+# not. Requires a network plugin that enforces NetworkPolicy, egress ipBlock with except included (k3s's built-in
+# kube-router policy controller does; plain Flannel without it does not).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: wreck-the-web
+  namespace: wreck-the-web
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: wreck-the-web
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # only the ingress controller talks to the server
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - port: 4600
+          protocol: TCP
+  egress:
+    # cluster DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # the public web, standard ports only
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 0.0.0.0/8          # "this network"
+              - 10.0.0.0/8         # private, incl. this cluster's pods and services
+              - 100.64.0.0/10      # carrier-grade NAT
+              - 127.0.0.0/8        # loopback
+              - 169.254.0.0/16     # link-local, cloud metadata
+              - 172.16.0.0/12      # private
+              - 192.0.0.0/24       # IETF protocol assignments
+              - 192.168.0.0/16     # private
+              - 198.18.0.0/15      # benchmarking
+              - 224.0.0.0/3        # multicast and reserved
+      ports:
+        - port: 80
+          protocol: TCP
+        - port: 443
+          protocol: TCP

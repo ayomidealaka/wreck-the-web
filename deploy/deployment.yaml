@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wreck-the-web
+  namespace: wreck-the-web
+  labels:
+    app.kubernetes.io/name: wreck-the-web
+spec:
+  # One replica: rendered levels are cached in the pod's memory and fetched in two requests (the level, then its
+  # image), so a second replica would need sticky sessions. One pod renders two sites at a time.
+  replicas: 1
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: wreck-the-web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: wreck-the-web
+    spec:
+      # Chrome runs untrusted pages: if one ever broke out of the browser, there's no Kubernetes API token to take.
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: ghcr-secret
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: web
+          image: ghcr.io/ayomidealaka/wreck-the-web:latest   # deploy.sh swaps in IMAGE:<git SHA> (yours, for your own registry)
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4600
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: HOST
+              value: 0.0.0.0
+            - name: PORT
+              value: "4600"
+            # one proxy (ingress-nginx) appends to X-Forwarded-For
+            - name: TRUST_PROXY
+              value: "1"
+            # Fresh renders per client per minute. On this cluster ingress-nginx's service has
+            # externalTrafficPolicy: Cluster, so the client address nginx sees (and forwards) is the same for everyone:
+            # this is effectively a limit for all players together. 12 would be far too low for that; with
+            # externalTrafficPolicy: Local it becomes a real per-player limit and can go back to 12.
+            - name: RATE_LIMIT_PER_MIN
+              value: "60"
+            - name: CACHE_MB
+              value: "384"
+            # Chrome's own sandbox needs user namespaces, which the RuntimeDefault seccomp profile blocks ("No usable
+            # sandbox!"). It runs without it, contained instead by this pod: non-root, no capabilities, no privilege
+            # escalation, seccomp, read-only root, no API token, and the network policy. To get the sandbox back,
+            # install a seccomp profile that also allows user namespaces on the node and use it (deploy/README.md).
+            - name: CHROME_NO_SANDBOX
+              value: "1"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 768Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            # Chrome's profiles, caches and shared memory (--disable-dev-shm-usage puts it in /tmp)
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 1Gi

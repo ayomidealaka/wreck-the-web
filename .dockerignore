@@ -1,0 +1,15 @@
+# Allowlist: only what the server and the game need goes into the image.
+*
+!package.json
+!package-lock.json
+!server/
+!public/
+
+# Not part of the game: the reference sheets aren't ours to publish (and are gitignored), the rest are dev tools.
+public/art/ref/
+public/art/candidates/
+public/art/packs/*/src/
+public/characters.html
+public/cast-preview.html
+public/js/gallery.js
+**/.DS_Store

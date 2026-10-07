@@ -94,6 +94,7 @@ public/              the game: index.html, style.css, js/
 public/art/          sprites, Ash (packs/test/, listed in packs.json) and the switched-off classic cast (cast.json)
 scripts/art/         the art pipeline: PixelLab generation, skeleton estimation, rig cutting
 scripts/playtests/   headless playtests, visual checks and profilers
+deploy/              Dockerfile and Kubernetes manifests (see deploy/README.md)
 ```
 
 ## Safety
@@ -105,6 +106,13 @@ queue and gives every render 45 seconds. Errors from Chrome aren't passed on to 
 
 An address check can't stop DNS rebinding, so don't expose it to the internet without a network-level block as well.
 `deploy/` has a Kubernetes network policy that lets the pod reach only public addresses on 80 and 443.
+
+## Deploying your own
+
+`deploy/` has a Dockerfile (the server plus Chromium and fonts), Kubernetes manifests (a locked-down deployment, a
+service, an ingress with cert-manager TLS and the network policy that keeps the renderer on the public web) and
+`deploy/deploy.sh`, which builds, tests, pushes and rolls it out. You build the image into your own registry;
+[deploy/README.md](deploy/README.md) walks through it, including running it with plain Docker.
 
 ## Testing
 
