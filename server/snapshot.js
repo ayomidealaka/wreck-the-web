@@ -1,5 +1,5 @@
 // Renders a website in headless Chrome and turns it into level data:
-// a full-page JPEG plus the boxes of every word, image and styled block on the page.
+// a full-page WebP plus the boxes of every word, image and styled block on the page.
 import puppeteer from 'puppeteer-core';
 import dns from 'node:dns/promises';
 import net from 'node:net';
@@ -18,25 +18,34 @@ const PIXEL_BUDGET = 48e6;   // device pixels per level image (memory on the cli
 const MOBILE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
 const clamp = (v, lo, hi, d) => Number.isFinite(+v) ? Math.min(hi, Math.max(lo, +v)) : d;
 const NAV_TIMEOUT = 20000;
+const RENDER_TIMEOUT = Number(process.env.RENDER_TIMEOUT_MS) || 45000;   // a whole render, start to finish: a page that hangs Chrome gives its slot back after this
+const MAX_QUEUE = Number(process.env.MAX_QUEUE) || 8;   // renders allowed to wait for a slot; past this the server says it's busy
+const PORTS = new Set(['', '80', '443']);                // the page and everything it loads stay on the web's standard ports
 const dbg = (...a) => process.env.DEBUG_SNAPSHOT && console.log('[snapshot]', ...a);
 
+// errors the player should see as they are (everything else is logged and answered with a generic message)
+export const fail = (message, status = 400) => Object.assign(new Error(message), { expose: true, status });
+
 // ------------------------------------------------------------------ SSRF guard
+// Only public addresses. IPv4: everything private, shared, loopback, link-local, multicast and reserved is out.
+// IPv6: only global unicast (2000::/3), minus the ranges in it that embed or route to IPv4 (6to4, Teredo) and the
+// documentation range. BlockList also matches IPv4-mapped IPv6 (::ffff:7f00:1 is 127.0.0.1) against the IPv4 rules.
+// This is one layer: in production a network policy blocks the same ranges for the Chrome pod (deploy/), which also
+// covers what an address check can't, like DNS rebinding.
+const DENY = new net.BlockList(), GLOBAL6 = new net.BlockList();
+for (const [a, n] of [['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16],
+  ['172.16.0.0', 12], ['192.0.0.0', 16], ['192.168.0.0', 16], ['198.18.0.0', 15], ['198.51.100.0', 24], ['203.0.113.0', 24],
+  ['224.0.0.0', 3]]) DENY.addSubnet(a, n, 'ipv4');
+for (const [a, n] of [['2001::', 32], ['2001:db8::', 32], ['2002::', 16]]) DENY.addSubnet(a, n, 'ipv6');
+GLOBAL6.addSubnet('2000::', 3, 'ipv6');
 function isPrivateIp(ip) {
-  if (net.isIPv4(ip)) {
-    const [a, b] = ip.split('.').map(Number);
-    return a === 0 || a === 10 || a === 127 || a >= 224 ||
-      (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) ||
-      (a === 192 && b === 0) || (a === 198 && (b === 18 || b === 19));
-  }
-  if (net.isIPv6(ip)) {
-    const v = ip.toLowerCase();
-    if (v === '::' || v === '::1') return true;
-    const mapped = v.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-    if (mapped) return isPrivateIp(mapped[1]);
-    return /^f[cd]/.test(v) || /^fe[89ab]/.test(v) || v.startsWith('ff');
-  }
-  return true;
+  if (net.isIPv4(ip)) return DENY.check(ip, 'ipv4');
+  if (!net.isIPv6(ip)) return true;
+  if (DENY.check(ip, 'ipv6')) return true;
+  let canon;
+  try { canon = new URL(`http://[${ip}]/`).hostname.slice(1, -1); } catch { return true; }   // zone ids and the like
+  if (/^::ffff:[0-9a-f]{1,4}:[0-9a-f]{1,4}$/.test(canon)) return false;   // IPv4-mapped and not denied above: a public IPv4
+  return !GLOBAL6.check(canon, 'ipv6');
 }
 
 const hostCache = new Map(); // hostname -> Promise<boolean allowed>
@@ -55,12 +64,13 @@ export function isHostAllowed(hostname) {
 
 export function normalizeUrl(input) {
   let s = String(input || '').trim();
-  if (!s) throw new Error('Enter a website address.');
+  if (!s) throw fail('Enter a website address.');
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) s = 'https://' + s;
   let u;
-  try { u = new URL(s); } catch { throw new Error('That does not look like a website address.'); }
-  if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('Only http and https websites can be loaded.');
-  if (u.username || u.password) throw new Error('Addresses with credentials are not allowed.');
+  try { u = new URL(s); } catch { throw fail('That does not look like a website address.'); }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') throw fail('Only http and https websites can be loaded.');
+  if (u.username || u.password) throw fail('Addresses with credentials are not allowed.');
+  if (!PORTS.has(u.port)) throw fail('Only websites on the standard ports (80 and 443) can be loaded.');
   u.hash = '';
   return u;
 }
@@ -73,8 +83,14 @@ function getBrowser() {
     if (!executablePath) throw new Error('Chrome not found. Set CHROME_PATH to a Chrome or Chromium binary.');
     browserPromise = puppeteer.launch({
       executablePath, headless: true, handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false,
+      protocolTimeout: 30000,   // a page that hangs Chrome can't hold a call open for Puppeteer's default 3 minutes
+      // Puppeteer turns Chrome's popup blocker off by default. Keep it on: a popup is a page of its own, outside the
+      // request filter below, and with no user gestures in a render it blocks every window.open and target=_blank.
+      ignoreDefaultArgs: ['--disable-popup-blocking'],
       args: ['--no-first-run', '--no-default-browser-check', '--mute-audio', '--disable-dev-shm-usage',
-             '--disable-features=Translate,MediaRouter', '--hide-scrollbars'],
+             '--disable-features=Translate,MediaRouter', '--hide-scrollbars',
+             // containers whose seccomp profile has no user namespaces can't run Chrome's sandbox (see deploy/README.md)
+             ...(process.env.CHROME_NO_SANDBOX === '1' ? ['--no-sandbox'] : [])],
     });
     browserPromise.then(b => b.on('disconnected', () => { browserPromise = null; }), () => { browserPromise = null; });
   }
@@ -86,10 +102,15 @@ export async function closeBrowser() {
   await b?.close().catch(() => {});
 }
 
-// tiny concurrency gate so a burst of requests can't spawn dozens of tabs
+// tiny concurrency gate so a burst of requests can't spawn dozens of tabs; a full queue turns new renders away
 let active = 0; const waiting = [];
 async function gate(fn) {
-  if (active >= 2) await new Promise(r => waiting.push(r));
+  if (active >= 2 && waiting.length >= MAX_QUEUE) throw fail('Lots of websites are being wrecked right now. Try again in a minute.', 503);
+  if (active >= 2) await new Promise((resolve, reject) => {   // a minute at most in the queue, then it gives up
+    const turn = () => { clearTimeout(timer); resolve(); };
+    const timer = setTimeout(() => { waiting.splice(waiting.indexOf(turn), 1); reject(fail('Lots of websites are being wrecked right now. Try again in a minute.', 503)); }, 60000);
+    waiting.push(turn);
+  });
   active++;
   try { return await fn(); } finally { active--; waiting.shift()?.(); }
 }
@@ -171,7 +192,7 @@ function extractLevel(maxH) {
 
 export async function snapshot(input, opts = {}) {
   const url = normalizeUrl(input);
-  if (!(await isHostAllowed(url.hostname))) throw new Error('That address points to a private or unknown host.');
+  if (!(await isHostAllowed(url.hostname))) throw fail('That address points to a private or unknown host.');
   // render at the player's real window size and pixel density, so the level is the page as they'd see it
   const mobile = !!opts.mobile;
   const width = Math.round(clamp(opts.width, 320, 2560, mobile ? 390 : 1280));
@@ -182,8 +203,13 @@ export async function snapshot(input, opts = {}) {
   return gate(async () => {
     const t0 = Date.now(); const step = s => dbg(s, Date.now() - t0 + 'ms');
     const browser = await getBrowser(); step('browser');
-    const ctx = await browser.createBrowserContext();
-    try {
+    const ctx = await browser.createBrowserContext({ downloadBehavior: { policy: 'deny' } });
+    // and if a popup gets through anyway (a page with an opener: ours has none), it's closed as soon as it appears
+    ctx.on('targetcreated', t => { if (t.type() === 'page' && t.opener()) t.page().then(p => p?.close()).catch(() => {}); });
+    // the whole render races a deadline; on timeout the context is closed, which ends whatever was still running in it
+    let timer;
+    const deadline = new Promise((_, reject) => { timer = setTimeout(() => reject(fail('That website took too long to render.', 504)), RENDER_TIMEOUT); });
+    const job = (async () => {
       const page = await ctx.newPage(); step('page');
       const ver = (await browser.version()).replace('HeadlessChrome', 'Chrome').split('/')[1] || '140.0.0.0';
       await page.setUserAgent(mobile ? MOBILE_UA
@@ -195,6 +221,7 @@ export async function snapshot(input, opts = {}) {
           const u = new URL(req.url());
           if (u.protocol === 'data:' || u.protocol === 'blob:') return req.continue();
           if (u.protocol !== 'http:' && u.protocol !== 'https:') return req.abort('blockedbyclient');
+          if (!PORTS.has(u.port)) return req.abort('blockedbyclient');
           if (!(await isHostAllowed(u.hostname))) return req.abort('blockedbyclient');
           if (['media', 'websocket', 'eventsource'].includes(req.resourceType())) return req.abort('blockedbyclient');
           return req.continue();
@@ -206,10 +233,10 @@ export async function snapshot(input, opts = {}) {
       try {
         response = await page.goto(url.href, { waitUntil: 'networkidle2', timeout: NAV_TIMEOUT });
       } catch (e) {
-        if (!/timeout/i.test(e.message)) throw new Error(`Could not load that site (${e.message.split('\n')[0]}).`);
+        if (!/timeout/i.test(e.message)) throw fail(`Could not load that site (${e.message.split('\n')[0]}).`, 502);
       }
       step('goto');
-      if (response && response.status() >= 400) throw new Error(`The site answered with HTTP ${response.status()}.`);
+      if (response && response.status() >= 400) throw fail(`The site answered with HTTP ${response.status()}.`, 502);
 
       // wake lazy images, then let the page settle
       await page.evaluate(async maxH => {
@@ -254,7 +281,12 @@ export async function snapshot(input, opts = {}) {
       });
       step('screenshot');
       return { url: page.url(), title: level.title, width: level.width, height, scale, bg: level.bg, boxes: level.boxes, letters: level.letters, image, mode: mobile ? 'mobile' : 'desktop' };
+    })();
+    job.catch(() => {});   // after a timeout it still rejects (its context is gone); that's expected, not unhandled
+    try {
+      return await Promise.race([job, deadline]);
     } finally {
+      clearTimeout(timer);
       await ctx.close().catch(() => {});
     }
   });

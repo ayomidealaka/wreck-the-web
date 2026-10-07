@@ -17,6 +17,7 @@ npm install
 npm start            # http://localhost:4600   (PORT=xxxx to change)
 ```
 
+It listens on this machine only; `HOST=0.0.0.0 npm start` opens it to your network (to try it on a phone, say).
 Needs Node 20+ and Google Chrome (set `CHROME_PATH` if it isn't where the server looks). Any level can be shared
 as a link: `http://localhost:4600/?url=wikipedia.org`.
 
@@ -97,9 +98,13 @@ scripts/playtests/   headless playtests, visual checks and profilers
 
 ## Safety
 
-The server fetches arbitrary URLs, so it refuses private, loopback and link-local addresses for the page and every
-sub-request, strips credentials, rate-limits renders per IP and caps the page height. DNS rebinding is not fully
-mitigated; put it behind an egress proxy before exposing it to the internet.
+The server opens arbitrary websites in a real browser, so for the page and every request it makes it refuses
+private, loopback, link-local and reserved addresses (IPv4 hidden in IPv6 included) and anything off ports 80 and
+443, keeps Chrome's popup blocker on, denies downloads, strips credentials, rate-limits renders per client, caps the
+queue and gives every render 45 seconds. Errors from Chrome aren't passed on to players.
+
+An address check can't stop DNS rebinding, so don't expose it to the internet without a network-level block as well.
+`deploy/` has a Kubernetes network policy that lets the pod reach only public addresses on 80 and 443.
 
 ## Testing
 
