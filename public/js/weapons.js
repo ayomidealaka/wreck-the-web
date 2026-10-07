@@ -95,7 +95,7 @@ export const WEAPONS = [
   { id: 'launcher', pose: 'rifle', key: '6', len: 28, name: 'Grenade Launcher', cd: 0.38, color: '#B5C27A', held: true, holdAt: 0.45, gripDrop: 2, blast: 64 },                  // 40mm HE
   { id: 'rocket', key: '7', len: 37, name: 'Rocket Launcher', cd: 0.8, color: '#FF5A4E', held: true, holdAt: 0.45, gripDrop: 2, blast: 86 },                      // RPG / AT4
   { id: 'flamer', pose: 'rifle', key: '8', len: 33, name: 'Flamethrower', cd: 0, color: '#FF8A2E', held: true, holdAt: 0.45, gripDrop: 1 },
-  { id: 'laser', pose: 'rifle', key: '9', len: 31, name: 'Rail Laser', cd: 1.1, color: '#7CF2FF', held: true, holdAt: 0.36, gripDrop: 2 },     // charges, then one beam through everything to the page edge
+  { id: 'laser', pose: 'rifle', key: '9', len: 31, name: 'Rail Laser', cd: 1.1, color: '#FF3DCB', held: true, holdAt: 0.36, gripDrop: 2 },     // charges, then one beam through everything to the page edge
   { id: 'well', pose: 'rifle', key: '0', len: 24, name: 'Gravity Well', cd: 1.5, color: '#B48CFF', held: true, holdAt: 0.33, gripDrop: 2 },
   { id: 'drone', key: '-', name: 'Gatling Drone', cd: 0.06, color: '#FF4A4A', held: false, dmg: { r: 4, pen: 20, splash: 4 } },
   { id: 'nuke', key: '=', len: 34, name: 'Mini Nuke', cd: 9, color: '#F5E04A', held: true, holdAt: 0.4, gripDrop: 2, blast: 190 },                                 // tactical warhead
@@ -704,10 +704,10 @@ export class Arsenal {
     this.rails.push({ x0, y0, x1, y1, life: 0.42, max: 0.42 });
     for (let i = 0, n = Math.min(220, len / 7); i < n; i++) {
       const u = Math.random() * len, an = a + (Math.random() < 0.5 ? -1 : 1) * Math.PI / 2 + (Math.random() - 0.5), sp = 60 + Math.random() * 260;
-      fx.spark(x0 + ux * u, y0 + uy * u, Math.cos(an) * sp + ux * 80, Math.sin(an) * sp + uy * 80, Math.random() < 0.5 ? '#FFFFFF' : '#7CF2FF', 2, 0.15 + Math.random() * 0.4, { glow: true, grav: 0 });
+      fx.spark(x0 + ux * u, y0 + uy * u, Math.cos(an) * sp + ux * 80, Math.sin(an) * sp + uy * 80, Math.random() < 0.5 ? '#FFFFFF' : '#FF3DCB', 2, 0.15 + Math.random() * 0.4, { glow: true, grav: 0 });
     }
     for (let i = 0, n = Math.min(60, len / 21); i < n; i++) { const u = Math.random() * len; fx.smoke(x0 + ux * u, y0 + uy * u, (Math.random() - 0.5) * 20, -6 - Math.random() * 18, 4 + Math.random() * 3, 0.8 + Math.random() * 0.8, 150); }
-    fx.muzzle(x0, y0, a, 'big', '#BFFBFF', 1.4);
+    fx.muzzle(x0, y0, a, 'big', '#FFD2F2', 1.4);
     for (let i = 0; i < 30; i++) { const an = a + Math.PI + (Math.random() - 0.5) * 2.4, sp = 200 + Math.random() * 400; fx.spark(x0, y0, Math.cos(an) * sp, Math.sin(an) * sp, '#FFFFFF', 2, 0.15 + Math.random() * 0.25, { glow: true, grav: 0 }); }
     fx.flash = Math.max(fx.flash, 0.5); fx.kick('big');
     audio.rail(); player.push(-ux * 260, -uy * 180); player.recoil = 1;
@@ -1444,15 +1444,15 @@ export class Arsenal {
     if (this.charge) {
       const p = this.game.player.hand(), c = Math.min(1, this.charge.t), fl = 1 + Math.sin(t * 50) * 0.18, rr = (2.4 + c * 7.2) * fl;
       glow(() => {
-        g.fillStyle = '#1E8FB0'; g.beginPath(); g.arc(p.x, p.y, rr + 2, 0, Math.PI * 2); g.fill();
-        g.fillStyle = '#7CF2FF'; g.beginPath(); g.arc(p.x, p.y, rr, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#8A1060'; g.beginPath(); g.arc(p.x, p.y, rr + 2, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#FF3DCB'; g.beginPath(); g.arc(p.x, p.y, rr, 0, Math.PI * 2); g.fill();
         g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(p.x, p.y, rr * 0.55, 0, Math.PI * 2); g.fill();
         g.lineWidth = 1;
         for (let k = 0, n = 1 + Math.floor(c * 3); k < n; k++) {                   // crackles
           let x = p.x, y = p.y, an = t * 17 + k * 2.1;
           g.beginPath(); g.moveTo(x, y);
           for (let s = 0, m = 8 + c * 16; s < m; s += 2) { an += Math.sin(t * 90 + s * 3 + k * 7) * 0.8; x += Math.cos(an) * 4; y += Math.sin(an) * 4; g.lineTo(x, y); }
-          g.strokeStyle = k % 2 ? '#7CF2FF' : '#FFFFFF'; g.stroke();
+          g.strokeStyle = k % 2 ? '#FF3DCB' : '#FFFFFF'; g.stroke();
         }
       });
     }
@@ -1461,8 +1461,8 @@ export class Arsenal {
       const line = () => { g.beginPath(); g.moveTo(r.x0, r.y0); g.lineTo(r.x1, r.y1); g.stroke(); };
       g.save(); g.lineCap = 'round';
       glow(() => {
-        g.strokeStyle = `rgba(124,242,255,${0.3 * X})`; g.lineWidth = w * 2.4; line();
-        g.strokeStyle = `rgba(124,242,255,${0.9 * X})`; g.lineWidth = w; line();
+        g.strokeStyle = `rgba(255,61,203,${0.3 * X})`; g.lineWidth = w * 2.4; line();
+        g.strokeStyle = `rgba(255,61,203,${0.9 * X})`; g.lineWidth = w; line();
         g.strokeStyle = `rgba(255,255,255,${X})`; g.lineWidth = w * 0.5; line();
       });
       g.restore();
