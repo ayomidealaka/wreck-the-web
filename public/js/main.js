@@ -425,7 +425,7 @@ class Game {
     this.arsenal.draw(g, this.t);
     this.player.draw(g, this.arsenal.weapon);
     this.fx.drawAbove(g);
-    this.drawFuel(); this.drawBattery();
+    this.drawFuel(); this.drawRecharge(); this.drawBattery();
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (this.slow?.t >= 0 && this.slowK < 0.99) { // slow-mo: darkened, cooler edges
       const k = (1 - this.slowK) / 0.7, W = canvas.width, H = canvas.height;
@@ -446,6 +446,14 @@ class Game {
     g.fillStyle = r > 0.25 ? '#7CF2FF' : '#FF5A4E'; g.fillRect(x, y, w * r, 3);
   }
 
+  // the weapon in hand reloading (the nuke's nine seconds and the like): a bar over the character, filling up in the
+  // weapon's colour
+  drawRecharge() {
+    const p = this.player, w = this.arsenal.weapon, r = this.arsenal.recharge(w); if (!r) return;
+    const bw = 30, x = p.x - bw / 2, y = p.y - p.height - (p.fuelRatio > 0.99 ? 12 : 19);
+    g.fillStyle = 'rgba(14,11,22,0.75)'; g.fillRect(x - 1, y - 1, bw + 2, 5);
+    g.fillStyle = w.color; g.fillRect(x, y, bw * r.frac, 3);
+  }
   drawFuel() {
     const p = this.player;
     if (p.fuelRatio > 0.99) return;
@@ -517,6 +525,12 @@ class Game {
       if (w.id === 'drone' && this.arsenal.droneCool > 0) { // recharging: dimmed with a countdown
         g.fillStyle = 'rgba(14,11,22,0.7)'; g.fillRect(x, wy, sw, slotH);
         text(`${Math.ceil(this.arsenal.droneCool)}s`, x + sw / 2, wy + (compact ? 9 : 13), compact ? 8 : 11, '#FFD25A', 'center');
+      }
+      const rc = this.arsenal.recharge(w);
+      if (rc) { // reloading: dimmed, a bar filling along the bottom, the seconds left
+        g.fillStyle = 'rgba(14,11,22,0.7)'; g.fillRect(x, wy, sw, slotH);
+        g.fillStyle = w.color; g.fillRect(x, wy + slotH - 4, sw * rc.frac, 4);
+        text(`${Math.ceil(rc.left)}s`, x + sw / 2, wy + (compact ? 9 : 13), compact ? 8 : 11, '#FFD25A', 'center');
       }
       if (!input.touch) text(w.key, x + 4, wy + 3, 9, on ? '#fff' : '#A79DB8');
       if (on && !small) text(w.name.toUpperCase(), x + sw / 2, wy0 - 16, 10, '#fff', 'center');

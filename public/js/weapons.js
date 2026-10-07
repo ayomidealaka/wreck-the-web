@@ -156,7 +156,7 @@ const FLAME_COLS = ['#FFF6C8', '#FFE07A', '#FFB238', '#FF8A2E', '#F2552C', '#C83
 export class Arsenal {
   constructor(game) {
     this.game = game;
-    this.index = 0; this.cool = 0; this.grenadeCool = 0;
+    this.index = 0; this.cools = {}; this.grenadeCool = 0;   // cools: each weapon's own time until it can fire again
     this.shots = []; this.charge = null; this.rails = [];
     this.flames = []; this.burning = new Map(); this.drone = null; this.strikeCool = 0;
     this.stars = []; this.chutes = []; this.burnT = 0;
@@ -164,6 +164,11 @@ export class Arsenal {
     this.stats = { letters: 0, shots: 0, booms: 0 };
   }
   get weapon() { return WEAPONS[this.index]; }
+  // a weapon with a long reload (1.5s or more) that is still reloading: seconds left and how far along it is (0..1)
+  recharge(w) {
+    const left = this.cools[w.id] ?? 0;
+    return w.cd >= 1.5 && left > 0 ? { left, frac: 1 - left / w.cd } : null;
+  }
   select(i, step = 0) {
     const n = (i + WEAPONS.length) % WEAPONS.length;
     if (n === this.index) return;
@@ -177,7 +182,8 @@ export class Arsenal {
 
   update(dt, inp) {
     const { player, fx, audio } = this.game;
-    this.cool -= dt; this.grenadeCool -= dt;
+    for (const k in this.cools) this.cools[k] -= dt;
+    this.grenadeCool -= dt;
     this.droneCool = Math.max(0, (this.droneCool || 0) - dt);
     if (inp.weaponNext) this.select(this.index + 1, 1);
     if (inp.weaponPrev) this.select(this.index - 1, -1);
@@ -193,8 +199,8 @@ export class Arsenal {
     if (inp.fire) {
       if (w.id === 'flamer') { this.flamer(dt, h, a); flameOn = true; }
       else if (w.id === 'minigun') spinOn = true;
-      if (this.cool <= 0 && !['flamer', 'drone'].includes(w.id)) {
-        this.cool = w.cd; this.stats.shots++;
+      if ((this.cools[w.id] ?? 0) <= 0 && !['flamer', 'drone'].includes(w.id)) {
+        this.cools[w.id] = w.cd; this.stats.shots++;
         const back = (k, s = 1) => h.x - Math.cos(a) * k * s;
         // where spent casings come out: the gun's ejection port when the character can tell us, else a little behind the muzzle
         const port = (k) => player.port?.() || { x: back(k), y: h.y - Math.sin(a) * k };
