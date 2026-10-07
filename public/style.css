@@ -174,3 +174,5 @@ h2 { font-family: var(--pixel); font-size: 34px; margin: 0 0 6px; }
 .news-list b { color: var(--gold); font-weight: 700; }
 .news-foot { margin: 18px 0 0; font-size: 12px; }
 .news-foot a { color: var(--cyan); }
+.medal-star { flex-shrink: 0; vertical-align: -1px; }
+.news-foot .medal-star { margin-right: 5px; }
