@@ -19,9 +19,9 @@ const progress = new Progress();   // XP, rank and the daily objectives, kept in
 const input = new Input(canvas, $('#touch'));
 const PIXEL = "'Silkscreen', ui-monospace, Menlo, monospace";
 const MILESTONES = [0.1, 0.25, 0.5, 0.75];
-// When the page counts as destroyed. Half the score is letters knocked off against 90% of the page's letters, half
-// is content removed against 90% of its content cells; both full = destroyed. No caps: however long the page.
-const LETTER_SHARE = 0.9, LETTER_CAP = Infinity, CELL_SHARE = 0.9, CELL_CAP = Infinity;
+// When the page counts as destroyed. Half the score is letters knocked off against 70% of the page's letters, half
+// is content removed against 70% of its content cells; both full = destroyed. No caps: however long the page.
+const LETTER_SHARE = 0.7, LETTER_CAP = Infinity, CELL_SHARE = 0.7, CELL_CAP = Infinity;
 const WIN_AT = 1;
 const TOUCH_REACH = 500;   // how far out the aim point sits when aiming with the stick
 // the tips checklist: [id, desktop label, touch label]; ticks off as you do each, once, ever (stored per browser)

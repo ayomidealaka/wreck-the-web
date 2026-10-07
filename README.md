@@ -77,7 +77,7 @@ forces one).
 hit points that grow with their size; bullets carve a short tunnel into them, they crack at 30/55/80% and come loose
 as one falling slab once their hit points run out or 38% of them has been carved away. Cards and sections work the
 same way and take their contents with them when they fall. A slab that is shot while falling shatters. The page
-counts as destroyed once 90% of its letters and 90% of its content are gone; the results float over the page and
+counts as destroyed once 70% of its letters and 70% of its content are gone; the results float over the page and
 you can keep going.
 
 **Feel.** Fixed 60Hz steps, tiered screen shake, hot rims that cool on fresh holes, soft scorch round blasts, lighter
