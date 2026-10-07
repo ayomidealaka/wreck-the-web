@@ -74,6 +74,25 @@ export function drawCrosshair(g, x, y, w, { t = 0, kick = 0 } = {}) {
       for (let k = 0; k < 3; k++) { const a = -Math.PI / 2 + k * Math.PI * 2 / 3; ring(5, a - 0.5, a + 0.5, col, 4); }
       dot(3, '#1A1608'); dot(1); break;
     }
+    case 'mirv': { // cluster launcher: a wide drop zone ring with eight ticks (one per bomblet) and a centre dot
+      const r = 20 + Math.round(kick * 4);
+      ring(r, 0, Math.PI * 2, 'rgba(255,178,56,0.7)');
+      const ticks = []; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; ticks.push([Math.round(Math.cos(a) * r) - 1, Math.round(Math.sin(a) * r) - 1, 2, 2]); }
+      boxes(ticks); dot(2); break;
+    }
+    case 'star': { // pulsar: two thin rotating jets through a small ring
+      ring(6);
+      for (const [c, lw] of [[EDGE, 3], [col, 1]]) {
+        g.strokeStyle = c; g.lineWidth = lw; g.beginPath();
+        for (let k = 0; k < 2; k++) { const a = t * 3 + k * Math.PI; g.moveTo(x + 0.5 + Math.cos(a) * 8, y + 0.5 + Math.sin(a) * 8); g.lineTo(x + 0.5 + Math.cos(a) * 22, y + 0.5 + Math.sin(a) * 22); }
+        g.stroke();
+      }
+      dot(2, '#FFFFFF'); break;
+    }
+    case 'wand': { // magic: a four-point sparkle that breathes
+      const s = 6 + Math.round(Math.sin(t * 5) * 2);
+      boxes([[-s, 0, s * 2 + 1, 1], [0, -s, 1, s * 2 + 1], [-2, -2, 5, 5]], col); boxes([[-1, -1, 3, 3]], '#FFFFFF'); break;
+    }
     default:
       cross(4, 4); dot(1);
   }

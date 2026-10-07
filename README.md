@@ -21,13 +21,17 @@ as a link: `http://localhost:4600/?url=wikipedia.org`.
 | Mouse aims, click shoots | Right stick aims and fires |
 | Right click or G: grenade. With the gravity well, right-click holds debris and release throws it | ● |
 | `[` airstrike | ✈ |
-| 1–0, `-`, `=` or the wheel: switch weapon | ⇄ |
+| 1–0, `-`, `=`, `,`, `.`, `/` or the wheel: switch weapon | ⇄ |
 | R save a replay clip, Esc pause, M mute | Clip and ⏸ buttons |
 
 **Weapons:** pistol, AK‑47, minigun, shotgun, .50 sniper, 40mm launcher, rocket launcher, flamethrower, laser,
-gravity well, gatling drone, mini nuke. Each has its own reticle, recoil and sound. Rounds fly as far as the cursor
-and punch paper holes where they land; the sniper's round carves a trench and ricochets off images; the laser cuts
-straight through whatever is on the way to the cursor; rockets and the nuke go off at the aim point.
+gravity well, gatling drone, mini nuke, cluster launcher, pulsar and a magic wand. Each has its own reticle, recoil
+and sound. Rounds fly as far as the cursor and punch paper holes where they land; the sniper's round carves a trench
+and ricochets off images; the laser cuts straight through whatever is on the way to the cursor; rockets and the nuke
+go off at the aim point. The cluster shell drifts down under a parachute and splits into eight bomblets. The pulsar
+forms a star whose two jets sweep a widening disc out of the page before it collapses and bursts into a crater with
+radial cracks. The wand lands a spell that draws a ritual circle, bursts, and pops six echoes around it. The
+flamethrower sets the page itself alight: fire spreads across it, chars it and burns it away.
 
 **Characters:** a classic pixel cast, and a rigged character, Ash, whose arms, legs and head are posed every frame:
 proper run and jump cycles, hands solved onto each weapon's grips, recoil springs, a weapon swing-in, a shotgun pump

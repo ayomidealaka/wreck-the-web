@@ -82,7 +82,7 @@ export class Input {
     }
     let weaponNext = this.wheel > 0 || e('KeyE'), weaponPrev = this.wheel < 0;
     let weaponSlot = null;
-    ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal']
+    ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal', 'Comma', 'Period', 'Slash']
       .forEach((c, i) => { if (e(c)) weaponSlot = i; });
     let aimDir = null;
 

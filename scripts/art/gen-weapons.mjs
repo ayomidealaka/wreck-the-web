@@ -22,6 +22,9 @@ export const ITEMS = {
   bomb:     { size: [24, 16], desc: 'single aerial bomb falling, dark olive green streamlined body with tail fins, pointing right' },
   jet:      { size: [42, 16], desc: 'fighter jet in flight side view, grey military jet with swept wings and afterburner, pointing right' },
   warhead:  { size: [20, 16], desc: 'small round nuclear bomb shell with tail fins, yellow and black radiation stripes, pointing right' },
+  mirv:    { size: [44, 24], desc: 'oversized cluster bomb launcher, absurdly fat dark steel tube with a hazard-striped cluster shell loaded at the front showing several small warhead tips, rear grip and shoulder rest' },
+  star:    { size: [42, 22], desc: 'exotic particle cannon, dark metal body with a glowing cyan containment sphere in the middle, cooling fins, forward emitter dish, thick cables, grip and trigger' },
+  wand:    { size: [36, 16], desc: 'ornate magic wand, slender dark wood shaft with small gold rings and a glowing pink crystal star at the tip, pointing right' },
   jetpack: { size: [24, 32], desc: 'compact jetpack backpack, two metal thruster tanks side by side with nozzles at the bottom, straps, grey and orange' },
 };
 const style = { type: 'base64', base64: fs.readFileSync(`${ROOT}/public/art/candidates/c1.png`).toString('base64'), format: 'png' };

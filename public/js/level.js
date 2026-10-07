@@ -6,7 +6,7 @@
 // off the page as one piece with their text, when the damage reaches their hit points or 38% of them is carved away.
 // Letters still go in one hit.
 export const CELL = 2;         // grid resolution in page pixels (fine, so feet land right on the glyphs)
-const BLOCK = 4;               // explosion holes are cut in chunkier 4px blocks
+export const BLOCK = 4;        // explosion holes are cut in chunkier 4px blocks
 const CONTENT = 1, LEDGE = 2;
 const TILE = 1024;             // tile height for the page image
 // element hit points: 20 + 0.4 x sqrt(area) (pictures 0.32), scaled so a pistol round does 1: a 100x40 button ~3 hits, a 300x200 card ~7, a 1000x600 section ~20
@@ -208,8 +208,9 @@ export class Level {
   // One colour per 4px block of the untouched page: debris and dust are coloured from this
   // table instead of reading the page. Packed 0xAARRGGBB; 0 where there was nothing.
   buildColors() {
-    const s = this.snapScale, cw = this.colCols = Math.ceil(this.W / BLOCK), ch = Math.ceil(this.H / BLOCK);
+    const s = this.snapScale, cw = this.colCols = Math.ceil(this.W / BLOCK), ch = this.colRows = Math.ceil(this.H / BLOCK);
     const col = this.colors = new Uint32Array(cw * ch);
+    this.gone = new Uint8Array(cw * ch);                                           // blocks carved, burnt or torn away since
     let lum = 0, n = 0;                                                         // how light the page is overall (0..1)
     for (const t of this.tiles) {
       const S = t.snap, d = S.data, q0 = Math.floor(t.y / BLOCK), q1 = Math.min(ch - 1, Math.ceil((t.y + t.h) / BLOCK) - 1);
@@ -222,6 +223,47 @@ export class Level {
       }
     }
     this.lum = n ? lum / n : 1;
+  }
+  // is there still page in this 4px block?
+  blockThere(k) { return this.colors[k] !== 0 && this.gone[k] === 0; }
+  // the blocks under a page rectangle are gone (a piece torn out, a letter box cleared)
+  markGone(x, y, w, h) {
+    const b0 = Math.max(0, Math.floor(x / BLOCK)), b1 = Math.min(this.colCols - 1, Math.floor((x + w - 1) / BLOCK));
+    const q0 = Math.max(0, Math.floor(y / BLOCK)), q1 = Math.min(this.colRows - 1, Math.floor((y + h - 1) / BLOCK));
+    for (let q = q0; q <= q1; q++) for (let b = b0; b <= b1; b++) this.gone[q * this.colCols + b] = 1;
+  }
+  // a block burns away: its pixels go, its content cells are lost; returns the element it belonged to, or -1
+  burnBlock(k) {
+    const b = k % this.colCols, q = (k / this.colCols) | 0, x = b * BLOCK, y = q * BLOCK;
+    this.gone[k] = 1;
+    let el = -1;
+    const per = BLOCK / CELL;
+    for (let j = 0; j < per; j++) for (let i = 0; i < per; i++) {
+      const c = b * per + i, r = q * per + j; if (c >= this.cols || r >= this.rows) continue;
+      const kk = r * this.cols + c;
+      if (this.elOwner[kk] >= 0) el = this.elOwner[kk];
+      if (this.solid[kk] === CONTENT) this.lose(kk);
+      this.solid[kk] = 0; this.owner[kk] = -1; this.elOwner[kk] = -1;
+    }
+    for (const t of this.tiles) if (y + BLOCK > t.y && y < t.y + t.h) t.g.clearRect(x, y, BLOCK, BLOCK);
+    return el;
+  }
+  // a block chars: darkened in place
+  charBlock(k, a) {
+    if (!this.blockThere(k)) return;
+    const b = k % this.colCols, q = (k / this.colCols) | 0, x = b * BLOCK, y = q * BLOCK;
+    for (const t of this.tiles) if (y + BLOCK > t.y && y < t.y + t.h) {
+      t.g.globalCompositeOperation = 'source-atop'; t.g.fillStyle = `rgba(26,12,8,${a})`; t.g.fillRect(x, y, BLOCK, BLOCK); t.g.globalCompositeOperation = 'source-over';
+    }
+  }
+  // carve a thin line (the star's jets, radial cracks): a hole every 2r along it, radius r (tapering to r1 when given)
+  carveLine(x0, y0, x1, y1, r, r1 = r) {
+    const d = Math.hypot(x1 - x0, y1 - y0); if (d < 1) return;
+    for (let u = 0; u <= d; u += Math.max(2, r)) {
+      const f = u / d, x = x0 + (x1 - x0) * f, y = y0 + (y1 - y0) * f;
+      if (x < 0 || x >= this.W || y < 0 || y >= this.H) continue;
+      this.carve(x, y, r + (r1 - r) * f, false);
+    }
   }
   // the page's colour at a point (CSS string), or null where there was nothing
   colorAt(x, y) {
@@ -359,7 +401,7 @@ export class Level {
       this.solid[k] = 0; this.owner[k] = -1; this.elOwner[k] = -1;
     }
     this.looseBox.delete(id);
-    this.clearRect(B.x, B.y, B.w, B.h);
+    this.clearRect(B.x, B.y, B.w, B.h); this.markGone(B.x, B.y, B.w, B.h);
     return { sprite, x: B.x + B.w / 2, y: B.y + B.h / 2, w: B.w, h: B.h, letters, elements };
   }
 
@@ -424,7 +466,7 @@ export class Level {
       this.solid[k] = 0; this.elOwner[k] = -1;
     }
     for (const lid of lettersGone) this.killLetter(lid);
-    this.clearRect(e.x, e.y, e.w, e.h);
+    this.clearRect(e.x, e.y, e.w, e.h); this.markGone(e.x, e.y, e.w, e.h);
     return { sprite, x: e.x + e.w / 2, y: e.y + e.h / 2, w: e.w, h: e.h, letters: lettersGone.size };
   }
   anyOwned(id, x, y, w, h) {
@@ -507,6 +549,7 @@ export class Level {
       const ty0 = t.y, ty1 = t.y + t.h;
       if (cy + R < ty0 || cy - R > ty1) continue;
       for (const [x, y, w] of holes) if (y + BLOCK > ty0 && y < ty1) t.g.clearRect(x, y, w, BLOCK);
+      if (this.gone) for (const [x, y, w] of holes) { const q = (y / BLOCK) | 0; if (q < this.colRows) for (let b = (x / BLOCK) | 0, e = Math.min(this.colCols - 1, ((x + w) / BLOCK | 0) - 1); b <= e; b++) this.gone[q * this.colCols + b] = 1; }
       if (rim[0].length || rim[1].length) {
         t.g.globalCompositeOperation = 'source-atop';
         for (let m = 0; m < 2; m++) { t.g.fillStyle = RIM_COL[m]; for (const [x, y, w] of rim[m]) if (y + BLOCK > ty0 && y < ty1) t.g.fillRect(x, y, w, BLOCK); }

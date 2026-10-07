@@ -342,6 +342,18 @@ export class Audio {
   jump(p = 1) { if (this.ok()) { this.noise_({ type: 'lowpass', f0: 500, d: 0.06, peak: 0.15 }); this.osc({ type: 'triangle', f0: 180 * p, f1: 360 * p, d: 0.08, peak: 0.06 }); } }
   land() { if (this.ok()) this.noise_({ type: 'lowpass', f0: 380, q: 0.7, d: 0.09, peak: 0.3 }); }
   // a round punching through bare paper: a dry papery tick (rate-limited, the minigun lands ~20 a second)
+  // the cluster shell's chute popping / splitting open
+  split() { if (this.ok()) { this.noise_({ type: 'bandpass', f0: 1800, f1: 600, q: 1.2, d: 0.12, peak: 0.3 }); this.osc({ type: 'square', f0: 900, f1: 300, d: 0.08, peak: 0.12 }); } }
+  // the pulsar: a rising charge when fired, a deep hum as it forms, a whoosh per half turn of the jets, a groan as it
+  // collapses, and the burst
+  starFire() { if (this.ok()) { this.osc({ type: 'sawtooth', f0: 180, f1: 1400, d: 0.35, peak: 0.16 }); this.noise_({ type: 'highpass', f0: 3000, d: 0.2, peak: 0.1 }); } }
+  starForm() { if (this.ok()) { this.osc({ type: 'sine', f0: 60, f1: 110, d: 1.2, peak: 0.3 }); this.osc({ type: 'triangle', f0: 2200, f1: 400, d: 0.6, peak: 0.1 }); } }
+  starSweep() { if (this.ok()) this.noise_({ type: 'bandpass', f0: 400, f1: 2400, q: 1.5, d: 0.3, peak: 0.16 }); }
+  starCollapse() { if (this.ok()) { this.osc({ type: 'sawtooth', f0: 400, f1: 40, d: 0.55, peak: 0.25 }); this.noise_({ type: 'lowpass', f0: 1200, f1: 200, d: 0.55, peak: 0.2 }); } }
+  starEnd() { if (this.ok()) { this.noise_({ type: 'lowpass', f0: 2500, f1: 120, d: 1.4, peak: 0.9 }); this.osc({ type: 'sine', f0: 90, f1: 28, d: 1.2, peak: 0.6 }); this.osc({ type: 'triangle', f0: 3000, f1: 200, d: 0.5, peak: 0.2 }); } }
+  // the wand: sparkly chimes while the spell flies and the ritual gathers, then a soft, huge pop
+  twinkle(k = 1) { if (this.ok()) { const f = 1800 + Math.random() * 1600; this.osc({ type: 'sine', f0: f, f1: f * 1.5, d: 0.12, peak: 0.07 * k }); this.osc({ type: 'triangle', f0: f * 2, f1: f * 2.5, d: 0.08, peak: 0.03 * k }); } }
+  wandBlast() { if (this.ok()) { this.noise_({ type: 'lowpass', f0: 1800, f1: 150, d: 1, peak: 0.7 }); this.osc({ type: 'sine', f0: 700, f1: 70, d: 0.8, peak: 0.4 }); for (let i = 0; i < 4; i++) this.osc({ type: 'sine', f0: 1200 + i * 400, f1: 2400 + i * 600, d: 0.5, peak: 0.06 }); } }
   // the .50 glancing off something hard: a short metallic whine
   ricochet() { if (this.ok()) { this.osc({ type: 'triangle', f0: 2600 + Math.random() * 600, f1: 900, d: 0.16, peak: 0.16 }); this.noise_({ type: 'highpass', f0: 5000, d: 0.03, peak: 0.1 }); } }
   paperHit() {
