@@ -24,7 +24,7 @@ const holes = await p.evaluate(() => {
   for (let y = g.cam.y + 200; y < g.cam.y + 600 && out.length < 6; y += 9) for (let x = 200; x < 1000 && out.length < 6; x += 13) {
     let clear = true; for (let u = -66; u <= 8 && clear; u += 2) for (let dy = -4; dy <= 4; dy += 2) if (L.solidAt(x + u, y + dy)) clear = false;
     if (!clear || out.some(q => Math.hypot(q.x - x, q.y - y) < 40)) continue;
-    a.bullet({ x: x - 60, y }, 0, 1500, 'bolt', { r: 4, pen: 50, splash: 0 }, { range: 60 }); out.push({ x, y });
+    a.bullet({ x: x - 60, y }, 0, 1500, 'smg', { r: 4, pen: 50, splash: 0 }, { range: 60 }); out.push({ x, y });
   }
   return out;
 });
@@ -43,11 +43,11 @@ const pierce = await p.evaluate(() => {
   const row = Object.values(rows).filter(r => r.length > 25).sort((p, q) => q.length - p.length)[0]; if (!row) return null;
   row.sort((p, q) => p.x - q.x);
   const y = row[0].y + row[0].h * 0.6, x = row[0].x - 6, before = a.stats.letters;
-  a.bullet({ x, y }, 0, 1500, 'bolt', { r: 4, pen: 50, splash: 0 }, { range: 600 });
+  a.bullet({ x, y }, 0, 1500, 'smg', { r: 4, pen: 50, splash: 0 }, { range: 600 });
   return { before, y, x };
 });
 await wait(600);
-if (pierce) console.log('pistol round through a text line: letters popped', await p.evaluate(b => window.__game().arsenal.stats.letters - b, pierce.before));
+if (pierce) console.log('a full-strength round through a text line: letters popped', await p.evaluate(b => window.__game().arsenal.stats.letters - b, pierce.before));
 // 4. springs: AK shot, sample gun state
 await p.keyboard.press('Digit2'); await wait(40);
 const sw = [];

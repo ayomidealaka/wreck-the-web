@@ -24,7 +24,7 @@ as a link: `http://localhost:4600/?url=wikipedia.org`.
 | 1–0, `-`, `=`, `,`, `.` or the wheel: switch weapon | ⇄ |
 | R save a replay clip, Esc pause, M mute | Clip and ⏸ buttons |
 
-**Weapons:** pistol, AK‑47, minigun, shotgun, .50 sniper, 40mm launcher, rocket launcher, flamethrower, laser,
+**Weapons:** Uzi, AK‑47, minigun, shotgun, .50 sniper, 40mm launcher, rocket launcher, flamethrower, laser,
 gravity well, gatling drone, mini nuke, cluster launcher and pulsar. Each has its own reticle, recoil
 and sound. Rounds fly as far as the cursor and punch paper holes where they land; the sniper's round carves a trench
 and ricochets off images; the rail laser charges for a moment, then fires one beam to the edge of the page that cuts

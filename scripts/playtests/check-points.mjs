@@ -12,7 +12,7 @@ const url = await p.evaluate(async () => {
   const packs = await loadPacks();
   const ash = await new RigCharacter((await loadManifest(packs.find(x => x.id === 'test')))[0]).load();
   const walt = await new CastCharacter((await loadManifest(packs.find(x => x.id === 'classic'))).find(d => d.id === 'c3')).load();
-  const ids = ['blaster', 'ak47', 'minigun', 'scatter', 'sniper'], CW = 90, CH = 110, Z = 3;
+  const ids = ['uzi', 'ak47', 'minigun', 'scatter', 'sniper'], CW = 90, CH = 110, Z = 3;
   const cv = document.createElement('canvas'); cv.width = ids.length * CW * Z; cv.height = 2 * CH * Z;
   const g = cv.getContext('2d'); g.fillStyle = '#9A9A9A'; g.fillRect(0, 0, cv.width, cv.height); g.scale(Z, Z);
   const dot = (q, c) => { g.fillStyle = c; g.fillRect(q.x - 1.5, q.y - 1.5, 3, 3); };

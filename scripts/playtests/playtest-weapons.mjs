@@ -14,9 +14,9 @@ await wait(1500);
 // drop into the body text
 for (let k = 0; k < 6; k++) { await p.keyboard.press('KeyS'); await wait(350); }
 await wait(600);
-const names = ['blaster', 'ak47', 'minigun', 'scatter', 'sniper', 'launcher', 'rocket', 'flamer', 'laser', 'well', 'drone', 'nuke', 'mirv', 'star'];
+const names = ['uzi', 'ak47', 'minigun', 'scatter', 'sniper', 'launcher', 'rocket', 'flamer', 'laser', 'well', 'drone', 'nuke', 'mirv', 'star'];
 const KEYS = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal', 'Comma', 'Period'];
-const hold = { blaster: 700, ak47: 700, minigun: 900, scatter: 120, sniper: 120, launcher: 120, rocket: 120, laser: 900, well: 120, flamer: 1100, drone: 1200, nuke: 120, mirv: 120, star: 120 };
+const hold = { uzi: 700, ak47: 700, minigun: 900, scatter: 120, sniper: 120, launcher: 120, rocket: 120, laser: 900, well: 120, flamer: 1100, drone: 1200, nuke: 120, mirv: 120, star: 120 };
 const after = { rocket: 260, launcher: 260, sniper: 60, well: 900, scatter: 60, nuke: 900, mirv: 2600, star: 2600 };
 for (const [i, n] of names.entries()) {
   const s = await p.evaluate(() => { const g = window.__game(), pl = g.player; return { x: pl.x, y: pl.y, cam: g.cam.y, z: g.cam.zoom }; });

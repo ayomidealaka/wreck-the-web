@@ -9,7 +9,7 @@ await p.goto('http://localhost:4600/?url=' + encodeURIComponent(site));
 await p.waitForFunction(() => document.querySelector('#loading').hidden && document.querySelector('#menu').hidden, { timeout: 90000 });
 const wait = ms => new Promise(r => setTimeout(r, ms));
 await wait(2500);
-// headline sits near the middle-top of the window: fire the blaster at it, then minigun
+// headline sits near the middle-top of the window: fire the Uzi at it, then minigun
 await p.mouse.move(720, 280);
 await p.mouse.down(); await wait(900); await p.mouse.up();
 await wait(250); await p.screenshot({ path: `${OUT}/let_1.png` });

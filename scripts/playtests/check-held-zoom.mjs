@@ -33,6 +33,6 @@ const url = await p.evaluate(async ([IDS, process_W, ANGS]) => {
     }
   }
   return cv.toDataURL();
-}, [(process.argv[3] || 'c1,c4').split(','), (process.env.W || 'blaster,scatter').split(','), (process.env.ANG || '-50,0,45').split(',').map(Number)]);
+}, [(process.argv[3] || 'c1,c4').split(','), (process.env.W || 'uzi,scatter').split(','), (process.env.ANG || '-50,0,45').split(',').map(Number)]);
 fs.writeFileSync(process.argv[2], Buffer.from(url.split(',')[1], 'base64'));
 console.log('errors:', errs.join(' | ') || 'none'); await b.close(); process.exit(0);

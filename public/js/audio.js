@@ -129,12 +129,12 @@ export class Audio {
   ok() { return !!this.ctx && !this.muted; }
 
   // ---------------------------------------------------------------- weapons
-  blaster() { // bright "pew": falling square chirp, sub drop, crisp click
+  uzi() { // a fast, light 9mm snap: a short bright crack, a small bark under it, no room to speak of
     if (!this.ok()) return;
-    const p = 0.9 + Math.random() * 0.2;
-    this.osc({ type: 'square', f0: 1500 * p, f1: 170, d: 0.13, peak: 0.12, verb: 0.25 });
-    this.osc({ type: 'sine', f0: 260 * p, f1: 70, d: 0.12, peak: 0.25 });
-    this.noise_({ type: 'highpass', f0: 4500, d: 0.02, peak: 0.25, verb: 0 });
+    const p = 0.92 + Math.random() * 0.16;
+    this.noise_({ type: 'bandpass', f0: 1700 * p, q: 1.1, d: 0.045, peak: 0.5, drive: true, verb: 0.12 });
+    this.noise_({ type: 'highpass', f0: 6000, d: 0.01, peak: 0.28, verb: 0 });
+    this.osc({ type: 'sine', f0: 210 * p, f1: 80, d: 0.05, peak: 0.28 });
   }
   minigun() { // dry crack + low thump per round
     if (!this.ok()) return;
@@ -350,7 +350,7 @@ export class Audio {
   respawn() { if (this.ok()) this.osc({ type: 'triangle', f0: 300, f1: 900, d: 0.3, peak: 0.1, verb: 0.3 }); }
   milestone() { if (this.ok()) [523, 659, 784, 1046].forEach((f, i) => this.osc({ type: 'square', f0: f, f1: f, d: 0.14, peak: 0.07, t: i * 0.08, verb: 0.3 })); }
   // legacy names
-  shot() { this.blaster(); }
+  shot() { this.uzi(); }
   launch() { this.rocketLaunch(); }
   stopLoops() { for (const k of Object.keys(this.loops)) this.loop(k, false); this.flameOn = false; }
 }

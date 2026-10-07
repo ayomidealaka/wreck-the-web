@@ -9,7 +9,7 @@ const style = fs.readFileSync(`${PACK}/src/style_gun.png`).toString('base64');
 const BASE = 'single weapon game sprite, side view, pointing right, horizontal, the whole weapon in frame with empty space around it, '
   + 'no hands, no person, detailed pixel art with dark outlines and rich shading, transparent background';
 export const ITEMS = {
-  blaster: 'compact sci-fi energy pistol, dark gunmetal body, glowing cyan energy cell, short barrel, pistol grip and trigger',
+  uzi: 'Uzi submachine gun, compact matte black steel receiver, short barrel with a front sight, a long straight magazine down through the pistol grip, a folded wire stock at the back, cocking knob on top',
   ak47: 'AK-47 assault rifle, black steel receiver and long barrel with front sight, curved banana magazine, warm brown wooden stock and handguard',
   minigun: 'heavy six-barrel rotary minigun, dark steel barrel cluster, carry handle on top, rear pistol grip, yellow ammo belt box underneath',
   scatter: 'pump-action combat shotgun, dark steel barrel over a tube magazine, wooden pump grip, wooden stock',

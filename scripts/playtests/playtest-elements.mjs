@@ -30,7 +30,7 @@ for (let shot = 1; shot <= 14; shot++) {
     const g = window.__game(), L = g.level, a = g.arsenal; let best = null;
     for (let x = T.x; x < T.x + T.w && !best; x += 2) for (let y = T.y + T.h * 0.3; y < T.y + T.h * 0.7; y += 2) if (L.elementAt(x, y) === T.id) { best = { x, y }; break; }
     best ||= { x: T.x + 2, y: T.y + T.h / 2 };
-    const W = a.weapon; a.bullet({ x: best.x - 8, y: best.y + 1 }, 0, 1500, 'bolt', W.dmg);
+    a.bullet({ x: best.x - 8, y: best.y + 1 }, 0, 1500, 'smg', { r: 4, pen: 0, splash: 0 });   // one full-strength round (the Uzi's are half)
   }, T);
   await wait(260);
   const st = await p.evaluate(id => { const g = window.__game(), e = g.level.elements[id]; return { hp: +e.hp.toFixed(2), alive: e.alive, carved: +(e.lost / e.cells).toFixed(2), falling: g.fx.chunks.filter(c => c.slab).length }; }, T.id);

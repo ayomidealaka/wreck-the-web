@@ -4,7 +4,7 @@ import { pl, savePng, balance, ROOT } from './pixellab.mjs';
 import fs from 'node:fs';
 const STYLE = 'pixel art game item sprite, side view, facing right, the whole item centered with an empty margin around it, muted realistic colours, detailed shading, gritty cinematic pixel art, transparent background, no text';
 export const ITEMS = {
-  blaster: { size: [32, 20], desc: 'compact sci-fi blaster pistol, dark gunmetal body with a cyan glowing energy cell and short barrel, grip and trigger' },
+  uzi:     { size: [30, 22], desc: 'Uzi submachine gun, compact matte black steel body, short barrel, long straight magazine down through the pistol grip, folded wire stock at the back, cocking knob on top' },
   minigun: { size: [42, 24], desc: 'heavy rotary minigun, six spinning barrels, dark steel body, carry handle on top, yellow ammo belt drum underneath, rear grip' },
   scatter: { size: [42, 20], desc: 'pump-action combat shotgun, dark steel barrel and tube magazine, wooden pump grip and wooden stock' },
   laser:   { size: [42, 20], desc: 'futuristic laser rifle, sleek dark purple and black body, glowing magenta energy core and lens at the barrel tip, grip and trigger' },

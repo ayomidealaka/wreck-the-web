@@ -6,7 +6,7 @@ import { Fire } from './fire.js';
 
 // ---------------------------------------------------------------- sprites
 const IMG = {};
-export const SPRITES = ['blaster', 'ak47', 'minigun', 'scatter', 'sniper', 'launcher', 'rocket', 'laser', 'well', 'flamer', 'drone', 'nuke',
+export const SPRITES = ['uzi', 'ak47', 'minigun', 'scatter', 'sniper', 'launcher', 'rocket', 'laser', 'well', 'flamer', 'drone', 'nuke',
   'mirv', 'star', 'grenade', 'jetpack', 'bomb', 'jet', 'warhead'];
 function scan(img) {
   const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
@@ -87,7 +87,7 @@ const JET_SCALE = 4;   // the airstrike jet, drawn at 4x its sprite (about 170px
 //            dmg.splash = letters shaken loose around every hit
 //   explosives  blast = radius (px)
 export const WEAPONS = [
-  { id: 'blaster', port: 0.5, key: '1', len: 13, name: 'Pistol', cd: 0.16, color: '#7CF2FF', held: true, holdAt: 0.3, gripDrop: 2, dmg: { r: 4, pen: 50, splash: 0 } },          // 9mm-class sidearm
+  { id: 'uzi', port: 0.5, key: '1', len: 17, name: 'Uzi', cd: 0.07, color: '#FFD86B', held: true, holdAt: 0.42, gripDrop: 2, dmg: { r: 3.5, pen: 30, splash: 0, hit: 0.5 } },   // 9mm SMG, ~850 rpm: through 4 letters, half a pistol round to elements
   { id: 'ak47', port: 0.5, pose: 'rifle', key: '2', len: 30, name: 'AK-47', cd: 0.1, color: '#E0A060', held: true, holdAt: 0.42, gripDrop: 1, dmg: { r: 5, pen: 30, splash: 6 } },          // 7.62x39, 600 rpm
   { id: 'minigun', port: 0.38, pose: 'rifle', key: '3', len: 31, name: 'Minigun', cd: 0.045, color: '#FFE45C', held: true, holdAt: 0.4, gripDrop: 1, dmg: { r: 5, pen: 32, splash: 7 } },     // 7.62 NATO x6 barrels, ~3000 rpm
   { id: 'scatter', port: 0.5, pose: 'rifle', key: '4', len: 34, name: 'Shotgun', cd: 0.7, color: '#FF9A2E', held: true, holdAt: 0.42, gripDrop: 1, dmg: { r: 4, pen: 20, splash: 7 } },     // 12-gauge 00 buck + point-blank blast
@@ -144,7 +144,7 @@ for (const w of WEAPONS) w.sprite = g => { const a = w.art; if (!a) return; if (
 
 // how each kind of round looks in flight: streak length = speed * len seconds (clamped), body width, colours
 const ROUND = {
-  bolt:   { len: 0.020, min: 14, max: 40, w: 3.4, body: '#19B6E6', core: '#E6FFFF', bloom: 'rgba(80,220,255,0.35)' },   // pistol energy bolt
+  smg:    { len: 0.016, min: 10, max: 30, w: 2.0, body: '#E8B030', core: '#FFF4CC', bloom: 'rgba(255,200,90,0.3)' },     // Uzi
   rifle:  { len: 0.020, min: 16, max: 48, w: 2.6, body: '#F07A12', core: '#FFF1C8', bloom: 'rgba(255,150,50,0.35)' },   // AK-47
   tracer: { len: 0.018, min: 14, max: 40, w: 2.3, body: '#E8A010', core: '#FFF6D6', bloom: 'rgba(255,210,80,0.3)' },    // minigun
   pellet: { len: 0.016, min: 10, max: 26, w: 2.2, body: '#E2601A', core: '#FFE0B0', bloom: 'rgba(255,140,60,0.3)' },    // shotgun
@@ -208,9 +208,10 @@ export class Arsenal {
           this.charge = { t: 0, half: false }; audio.railCharge();
           fx.rings.push({ x: h.x, y: h.y, r: 120, max: 4, t: 0, dur: 0.3 });
         }
-        if (w.id === 'blaster') {
-          this.bullet(h, spread(0.02), 1500, 'bolt', w.dmg, { range }); audio.blaster(); player.recoil = 0.5;
-          fx.muzzle(h.x, h.y, a, 'ring', '#9FF6FF');
+        if (w.id === 'uzi') {
+          this.bullet(h, spread(0.07), 1900, 'smg', w.dmg, { range }); audio.uzi(); player.recoil = 0.32;
+          fx.muzzle(h.x, h.y, a, 'star', '#FFD27A', 0.7 + Math.random() * 0.3);
+          { const q = port(6); fx.casing(q.x, q.y, dir, '#D9A63A', 2); }
         }
         if (w.id === 'ak47') {
           this.bullet(h, spread(0.05), 2000, 'rifle', w.dmg, { range }); audio.ak47(); player.recoil = 0.6;
@@ -400,7 +401,7 @@ export class Arsenal {
 
   bullet(h, a, speed, style, dmg, extra = {}) {
     this.shots.push({ kind: 'bullet', style, x: h.x, y: h.y, x0: h.x, y0: h.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, a,
-      r: dmg.r, pen: dmg.pen, splash: dmg.splash, hits: 0, life: 1.2, t: 0, ...extra });
+      r: dmg.r, pen: dmg.pen, splash: dmg.splash, hitDmg: dmg.hit ?? 1, hits: 0, life: 1.2, t: 0, ...extra });
   }
   // shotgun at contact range: the whole charge tears a cone out before it spreads
   pointBlank(h, a, range, cone) {
@@ -551,10 +552,10 @@ export class Arsenal {
     const { level, fx, backdrop } = this.game, style = s.style;
     const id = level.letterAt(x, y);
     const sp = Math.hypot(vx, vy) || 1, ux = vx / sp, uy = vy / sp;
-    const col = { bolt: '#9FF6FF', tracer: '#FFE07A', rifle: '#FFC266', slug: '#FFFFFF', pellet: '#FFB238', drone: '#FF8A6A' }[style] || '#FFF6C8';
+    const col = { smg: '#FFE09A', tracer: '#FFE07A', rifle: '#FFC266', slug: '#FFFFFF', pellet: '#FFB238', drone: '#FF8A6A' }[style] || '#FFF6C8';
     const kick = (f = 1) => [ux * (260 + Math.random() * 220) * f + (Math.random() - 0.5) * 160, uy * 240 * f - 180 - Math.random() * 220];
     const shake = () => { if (s.splash) for (const n of level.lettersInRadius(x, y, s.splash)) this.popLetter(n, ...kick(s.style === 'slug' ? 1.6 : 1)); };
-    if (loud && style === 'bolt') { fx.muzzle(x, y, Math.atan2(uy, ux) + Math.PI, 'ring', col); for (let i = 0; i < 5; i++) fx.spark(x, y, (Math.random() - 0.5) * 260, (Math.random() - 0.5) * 260, col, 2, 0.25, { glow: true, grav: 0.2 }); }
+    if (loud && style === 'smg') { for (let i = 0; i < 3; i++) fx.spark(x, y, (Math.random() - 0.5) * 260, (Math.random() - 0.5) * 260, col, 2, 0.25, { glow: true, grav: 0.2 }); }
     s.met = id >= 0 ? 'letter' : level.elementAt(x, y) >= 0 ? 'element' : 'other';
     if (id >= 0) {
       this.hurtBox(level.boxAt(x, y), 0.15, x, y);                          // the card the text is in feels it a little (mostly it wears down)
@@ -571,7 +572,7 @@ export class Arsenal {
       // on through the hole, a third back at you) and the rim glows hot for a moment
       const slug = style === 'slug', K = s.r * 1.2, cols = loud ? level.sampleColors(x, y, K + 2, 12) : null;
       const chips = loud ? this.spall(x, y, 1 + (Math.random() * 2.2 | 0)) : [];
-      this.hurtElement(el, slug ? 6 : 1, x, y, ux, uy);
+      this.hurtElement(el, slug ? 6 : s.hitDmg ?? 1, x, y, ux, uy);
       if (level.elements[el]?.alive) {
         level.carve(x, y, K);
         for (const [d, f] of [[0.9, 0.72], [1.75, 0.5]]) { const tx = x + ux * K * d, ty = y + uy * K * d; if (level.elementAt(tx, ty) === el) level.carve(tx, ty, K * f, false); }
@@ -589,7 +590,7 @@ export class Arsenal {
     if (loud) {
       this.dust(x, y, ux, uy, cols, style === 'slug' ? 12 : 6, style === 'slug' ? 420 : 260);
       fx.spark(x, y, 0, 0, '#FFF6C8', 5, 0.06, { glow: true, grav: 0 });
-      if (style !== 'bolt' && style !== 'pellet') fx.smoke(x, y, -ux * 30, -20, 3, 0.5, 150);
+      if (style !== 'smg' && style !== 'pellet') fx.smoke(x, y, -ux * 30, -20, 3, 0.5, 150);
     }
     return s.r * 2;
   }
@@ -1197,7 +1198,6 @@ export class Arsenal {
           if (step >= left) { const f = left / (step || 1); nx = s.x + (nx - s.x) * f; ny = s.y + (ny - s.y) * f; ends = true; }
           s.dist = (s.dist || 0) + Math.min(step, left);
         }
-        if (s.style === 'bolt' && Math.random() < 0.6) fx.spark(s.x, s.y, (Math.random() - 0.5) * 30, (Math.random() - 0.5) * 30, '#7CF2FF', 2, 0.18, { glow: true, grav: 0 });
         // your own grenades and 40mm rounds in its path: set them off in the air (the .50 also sprays fragments)
         for (const q of this.shots) {
           if ((q.kind !== 'grenade' && q.kind !== 'shell40') || q.life <= 0) continue;

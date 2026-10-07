@@ -11,7 +11,7 @@ console.log(await p.evaluate(async PACK => {
   const { WEAPONS, loadWeaponArt } = await import('/js/weapons.js'); await loadWeaponArt();
   const c = await new RigCharacter((await loadManifest((await loadPacks()).find(x => x.id === PACK)))[0]).load();
   const out = [];
-  for (const id of ['blaster', 'ak47', 'sniper', 'rocket']) {
+  for (const id of ['uzi', 'ak47', 'sniper', 'rocket']) {
     const w = WEAPONS.find(x => x.id === id), errs = { old: [], new: [] };
     for (const dist of [60, 150, 400]) for (let deg = -80; deg <= 80; deg += 20) {
       const st0 = { x: 0, y: 0, facing: 1, t: 0, onGround: true, moving: false, landT: 0, recoil: 0, aim: 0 };

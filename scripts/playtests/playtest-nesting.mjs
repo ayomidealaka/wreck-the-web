@@ -33,7 +33,7 @@ for (; n < 200; n++) {
     const targets = L.letters.filter(l => l.alive && l.x >= B.x && l.x + l.w <= B.x + B.w && l.y >= B.y && l.y + l.h <= B.y + B.h);
     const t = targets[(Math.random() * targets.length) | 0];
     if (!t) return { alive: true, hp: B.hp, empty: true };
-    a.bullet({ x: t.x - 6, y: t.y + t.h / 2 }, 0, 1500, 'bolt', { r: 4, pen: 0, splash: 0 });
+    a.bullet({ x: t.x - 6, y: t.y + t.h / 2 }, 0, 1500, 'smg', { r: 4, pen: 0, splash: 0 });
     return { alive: true, hp: +B.hp.toFixed(2), worn: +(B.lost / Math.max(1, B.cells)).toFixed(2) };
   }, C);
   if (!st.alive) break;

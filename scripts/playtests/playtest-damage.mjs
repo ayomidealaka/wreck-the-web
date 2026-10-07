@@ -8,9 +8,9 @@ const p = await b.newPage(); const errs = [];
 p.on('pageerror', e => errs.push('PAGEERROR ' + e.message + ' ' + (e.stack || '').split('\n').slice(1, 3).join(' | '))); p.on('console', m => { if (m.type() === 'error' && !/404/.test(m.text())) errs.push(m.text()); });
 await p.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
 const wait = ms => new Promise(r => setTimeout(r, ms));
-const ids = ['blaster', 'ak47', 'minigun', 'scatter', 'sniper', 'launcher', 'rocket', 'flamer', 'laser', 'well', 'drone', 'nuke', 'airstrike']; // airstrike = the [ key
+const ids = ['uzi', 'ak47', 'minigun', 'scatter', 'sniper', 'launcher', 'rocket', 'flamer', 'laser', 'well', 'drone', 'nuke', 'airstrike']; // airstrike = the [ key
 // how long the trigger is held, and how long to let things play out afterwards
-const hold = { blaster: 1500, ak47: 1500, minigun: 1500, scatter: 1500, sniper: 1500, launcher: 1500, rocket: 1500, flamer: 1500, laser: 1500, well: 1500, drone: 1500, airstrike: 200, nuke: 200 };
+const hold = { uzi: 1500, ak47: 1500, minigun: 1500, scatter: 1500, sniper: 1500, launcher: 1500, rocket: 1500, flamer: 1500, laser: 1500, well: 1500, drone: 1500, airstrike: 200, nuke: 200 };
 const after = { airstrike: 3600, nuke: 3500, well: 2600, flamer: 1800, launcher: 900, rocket: 900 };
 const rows = [];
 for (const [i, id] of ids.entries()) {

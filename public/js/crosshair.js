@@ -18,8 +18,8 @@ export function drawCrosshair(g, x, y, w, { t = 0, kick = 0 } = {}) {
   };
   g.save();
   switch (w?.id) {
-    case 'blaster': // pistol: tight open cross, centre dot
-      cross(3 + Math.round(kick * 4), 3); dot(1); break;
+    case 'uzi': // SMG: a short cross that blooms wide as it sprays, centre dot
+      cross(3 + Math.round(kick * 9), 3); dot(1); break;
     case 'ak47': // assault rifle: longer cross that blooms while firing, centre dot
       cross(4 + Math.round(kick * 8), 5); dot(2); break;
     case 'minigun': { // spray: a spread circle that opens up while spinning, centre dot, ticks outside

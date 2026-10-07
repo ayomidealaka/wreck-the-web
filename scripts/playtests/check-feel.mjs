@@ -12,7 +12,7 @@ const url = await p.evaluate(async PACK => {
   const { WEAPONS, loadWeaponArt } = await import('/js/weapons.js'); await loadWeaponArt();
   const c = await new RigCharacter((await loadManifest((await loadPacks()).find(x => x.id === PACK)))[0]).load();
   const cols = [];
-  for (const id of ['blaster', 'ak47', 'scatter', 'sniper']) for (const deg of [-55, 0, 45]) for (const recoil of [0, 1]) cols.push({ id, deg, recoil });
+  for (const id of ['uzi', 'ak47', 'scatter', 'sniper']) for (const deg of [-55, 0, 45]) for (const recoil of [0, 1]) cols.push({ id, deg, recoil });
   const CW = 78, CH = 120, Z = 2, cv = document.createElement('canvas'); cv.width = cols.length * CW * Z; cv.height = 2 * CH * Z;
   const g = cv.getContext('2d'); g.scale(Z, Z);
   [['#FFFFFF', 1], ['#1A1626', 0.1]].forEach(([bg, lum], r) => {

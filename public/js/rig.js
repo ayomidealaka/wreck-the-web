@@ -12,7 +12,7 @@ const D2R = Math.PI / 180;
 // Recoil per weapon at full kick (the player's recoil value, 1 right after a shot, fading fast): how far the gun is
 // shoved back along the barrel (drawing px) and how far the muzzle climbs (degrees).
 const KICK = {
-  blaster: [10, 12], ak47: [9, 7], minigun: [6, 3], scatter: [18, 16], sniper: [22, 20], launcher: [12, 11],
+  uzi: [6, 5], ak47: [9, 7], minigun: [6, 3], scatter: [18, 16], sniper: [22, 20], launcher: [12, 11],
   rocket: [14, 7], nuke: [18, 9], flamer: [2, 1], laser: [16, 12], well: [9, 9], mirv: [20, 14], star: [16, 10],
 };
 // One leg's run cycle in 8 keys, measured from a reference sprint (public/art/ref/run2, scripts/art/estimate-ref-poses.mjs):

@@ -1,5 +1,5 @@
 // Contact sheet for a rigged character: rows = poses (idle / run phases / air), columns = weapons at several aims.
-// usage: node scripts/playtests/check-rig.mjs out.png [pack]   (WEAPONS=ak47,blaster,rocket ANG=-50,0,40)
+// usage: node scripts/playtests/check-rig.mjs out.png [pack]   (WEAPONS=ak47,uzi,rocket ANG=-50,0,40)
 import puppeteer from 'puppeteer-core';
 import fs from 'node:fs';
 const [OUT, PACK = 'test'] = process.argv.slice(2);
@@ -32,6 +32,6 @@ const url = await p.evaluate(async ([PACK, WS, ANGS]) => {
   }));
   g.font = '7px sans-serif'; g.fillStyle = '#222'; states.forEach((s, r) => g.fillText(s.name, 2, r * CH + 10));
   return cv.toDataURL();
-}, [PACK, (process.env.WEAPONS || 'ak47,blaster,rocket').split(','), (process.env.ANG || '-50,0,40').split(',').map(Number)]);
+}, [PACK, (process.env.WEAPONS || 'ak47,uzi,rocket').split(','), (process.env.ANG || '-50,0,40').split(',').map(Number)]);
 fs.writeFileSync(OUT, Buffer.from(url.split(',')[1], 'base64'));
 console.log('errors:', errs.join(' | ') || 'none'); await b.close();
