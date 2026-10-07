@@ -102,6 +102,9 @@ export const WEAPONS = [
   { id: 'mirv', pose: 'rifle', key: ',', len: 40, name: 'Cluster Launcher', cd: 1.9, color: '#FFB238', held: true, holdAt: 0.42, gripDrop: 2, blast: 46 },       // a shell that chutes down and splits into eight
   { id: 'star', pose: 'rifle', key: '.', len: 38, name: 'Pulsar', cd: 1.6, color: '#7CF2FF', held: true, holdAt: 0.4, gripDrop: 2 },                             // a neutron star: sweeping jets, then it collapses
 ];
+// the gravity well once it has landed: how long it lives (the last part collapsing), how far its two arms reach and
+// how long they take to get there, and how fast they sweep round
+const WELL = { life: 3.4, collapse: 0.45, reach: 260, grow: 2.2, spin: 3.2 };
 // the pulsar, by the numbers
 const STAR = { radius: 42, form: 0.45, life: 4.2, collapse: 0.55, spin: 3, reach: 390, grow: 0.9 };
 const WPN = Object.fromEntries(WEAPONS.map(w => [w.id, w]));
@@ -769,6 +772,68 @@ export class Arsenal {
     if (s.y > level.H + 20) { this.explode(s.x, level.H, R, 900); s.life = 0; }
   }
 
+  // ---------------------------------------------------------------- the gravity well's whirlpool
+  // Two arms sweep round the vortex, growing out to WELL.reach, and tear out every bit of page they cross. Every element
+  // an arm passes is worn down each frame it is in it; letters in an arm are whirled off with the spin (half alight);
+  // small debris in an arm is vaporised and falling pieces shatter; the torn edges char.
+  wellArms(s, dt) {
+    const { level, fx, audio } = this.game, W = WELL;
+    const reach = s.r + (W.reach - s.r) * Math.min(1, s.t / W.grow), a0 = s.arm ?? Math.random() * Math.PI * 2, a1 = a0 + W.spin * dt;
+    s.arm = a1; s.reach = reach;
+    const rIn = s.r * 0.8;
+    let shattered = 0;
+    for (let j = 0; j < 2; j++) {
+      const off = j * Math.PI, ax = Math.cos(a1 + off), ay = Math.sin(a1 + off), tx = -ay, ty = ax;
+      const cut = level.tearWedge(s.x, s.y, a0 + off, a1 + off, rIn, reach, 10);
+      for (const [el, n] of cut.elements) s.wear.set(el, (s.wear.get(el) || 0) + (0.4 + n * 0.004) / 16);
+      for (let i = 0; i < cut.torn.length && i < 80; i += 2) {                  // what it tore out, thrown round with the spin
+        if (Math.random() > 0.3) continue;
+        const x = (cut.torn[i] + 0.5) * 4, y = (cut.torn[i + 1] + 0.5) * 4, col = level.colorAt(x, y); if (!col) continue;
+        const sp = 150 + Math.random() * 350;
+        fx.spark(x, y, tx * sp - ax * 80, ty * sp - ay * 80 - 40, col, 2 + (Math.random() * 2 | 0), 0.5 + Math.random() * 0.6);
+      }
+      const x0 = s.x + ax * rIn, y0 = s.y + ay * rIn, x1 = s.x + ax * reach, y1 = s.y + ay * reach;
+      for (const id of level.lettersNearLine(x0, y0, x1, y1, 10)) {
+        const sp = 250 + Math.random() * 450, inw = 100 + Math.random() * 200;
+        this.popLetter(id, tx * sp - ax * inw, ty * sp - ay * inw - 80, Math.random() < 0.5);
+      }
+      for (const c of fx.chunks.slice()) {
+        const r = Math.hypot(c.x - s.x, c.y - s.y); if (r > reach + 10 || r < rIn) continue;
+        if (segDist(c.x, c.y, x0, y0, x1, y1) > 12 + Math.min(c.w, c.h) / 2) continue;
+        if (c.slab) { if (shattered++ < 2) this.shatterSlab(c, c.x, c.y, 420); }
+        else if (c.w * c.h < 1600) {                                               // small bits: vaporised in a burst of their colour
+          const k = fx.chunks.indexOf(c); if (k >= 0) fx.chunks.splice(k, 1);
+          for (let i = 0; i < 4; i++) fx.spark(c.x, c.y, tx * (200 + Math.random() * 400), ty * (200 + Math.random() * 400), '#E8DBFF', 2, 0.25 + Math.random() * 0.3, { glow: true, grav: 0 });
+        }
+      }
+      if ((s.scorchT ?? 0) <= 0) level.scorch(0, 0, 6, 14, 0.7, [x0, y0, x1, y1]);  // the torn edges char
+    }
+    if ((s.scorchT = (s.scorchT ?? 0) - dt) <= 0) s.scorchT = 0.08;
+    if ((s.sweep = (s.sweep || 0) + W.spin * dt) >= Math.PI) { s.sweep -= Math.PI; audio.starSweep(); }
+    this.wellWear(s, false, dt);
+  }
+  // the wear the arms did, settled four times a second (so an element in the sweep cracks and falls, without a crack
+  // sound every frame)
+  wellWear(s, now = false, dt = 0) {
+    if (!s.wear?.size) return;
+    if (!now && (s.wearT = (s.wearT ?? 0.25) - dt) > 0) return;
+    s.wearT = 0.25;
+    const level = this.game.level;
+    for (const [el, d] of s.wear) { const e = level.elements[el]; if (e?.alive) this.hurtElement(el, d, e.x + e.w / 2, e.y + e.h / 2, (e.x + e.w / 2 - s.x) / 100, (e.y + e.h / 2 - s.y) / 100); }
+    s.wear.clear();
+  }
+  // the whirlpool's end: the pulsar's burst (crater, scorch, radial cracks, chips, flung letters), plus a flat 170 to
+  // everything the crater touches and up to 120 to everything within four radii, on the pistol-round-is-16 scale
+  whirlBurst(x, y) {
+    const { level } = this.game, h = STAR.radius, U = h * 2.2, N = h * 4;
+    const dist = (r) => Math.hypot(Math.max(r.x - x, 0, x - (r.x + r.w)), Math.max(r.y - y, 0, y - (r.y + r.h)));
+    const near = [...level.elementsInRadius(x, y, N)].map(id => [id, dist(level.elements[id])]);
+    const nearBoxes = [...level.boxesInRadius(x, y, N)].map(id => [id, dist(level.boxes[id])]);
+    this.starBlast({ x, y });
+    for (const [id, d] of near) { const e = level.elements[id]; if (e?.alive) this.hurtElement(id, d <= U ? 170 / 16 : 120 / 16 * (1 - d / N), e.x + e.w / 2, e.y + e.h / 2, 0, -1); }
+    for (const [id, d] of nearBoxes) { const B = level.boxes[id]; if (B?.alive) this.hurtBox(id, d <= U ? 170 / 16 : 120 / 16 * (1 - d / N), Math.max(B.x, Math.min(x, B.x + B.w)), Math.max(B.y, Math.min(y, B.y + B.h))); }
+  }
+
   // ---------------------------------------------------------------- the pulsar
   // A star forms where the seed lands. For four seconds two jets sweep round it, growing out to STAR.reach: they cut
   // rings through everything they cross and fling the letters inward, while debris is pulled in. Then it collapses,
@@ -1251,7 +1316,7 @@ export class Arsenal {
           const p = this.trace(s.x, s.y, nx, ny);
           if (Math.random() < 0.8) { const an = s.t * 25; fx.spark(s.x + Math.cos(an) * 6, s.y + Math.sin(an) * 6, 0, 0, '#B48CFF', 2, 0.3, { glow: true, grav: 0 }); }
           if (p) { s.x = p.x; s.y = p.y; } else { s.x = nx; s.y = ny; }
-          if (p || s.life <= 0) { s.active = true; s.t = 0; s.life = 2.3; audio.well(); }
+          if (p || s.life <= 0) { s.active = true; s.t = 0; s.life = WELL.life; s.wear = new Map(); audio.well(); }
         } else {
           s.r = Math.min(72, 8 + s.t * 48);
           s.tick = (s.tick || 0) - dt;
@@ -1264,7 +1329,10 @@ export class Arsenal {
             for (const id of level.elementsInRadius(s.x, s.y, s.r * 1.2)) this.hurtElement(id, 0.8, s.x, s.y, 0, 0, -200);   // ground down, pieces sucked in
             level.carve(s.x, s.y, s.r, false); this.game.backdrop.reveal(s.y - s.r, s.y + s.r);
           }
-          fx.impulse(s.x, s.y, 320, -2600 * dt);
+          const collapsing = s.life < WELL.collapse;
+          if (!collapsing) this.wellArms(s, dt); else s.reach = 0;
+          fx.impulse(s.x, s.y, collapsing ? 420 : 320, (collapsing ? -5200 : -2600) * dt);
+          if (collapsing) fx.shake = Math.max(fx.shake, 3);
           for (const c of fx.chunks) if (Math.hypot(c.x - s.x, c.y - s.y) < s.r * 0.5) { c.life = Math.min(c.life, 0.15); c.vx *= 0.5; c.vy *= 0.5; }
           const dx = s.x - player.x, dy = s.y - (player.y - player.height / 2), d = Math.hypot(dx, dy) || 1;
           if (d < 240) { const k = 1500 * (1 - d / 240) * dt; player.vx += dx / d * k; player.vy += dy / d * k; }
@@ -1272,7 +1340,7 @@ export class Arsenal {
             const ang = Math.random() * Math.PI * 2, rr = s.r * 2.2;
             fx.spark(s.x + Math.cos(ang) * rr, s.y + Math.sin(ang) * rr, -Math.cos(ang + 0.6) * 260, -Math.sin(ang + 0.6) * 260, Math.random() < 0.5 ? '#B48CFF' : '#E8DBFF', 2, 0.35, { glow: true, grav: 0, drag: 0 });
           }
-          if (s.life <= 0) this.explode(s.x, s.y, s.r + 10, 1100);
+          if (s.life <= 0) { this.wellWear(s, true); this.whirlBurst(s.x, s.y); }
         }
       }
       if (s.x < -200 || s.x > level.W + 200 || s.y > level.H + 400 || s.y < -1500) s.life = 0;
@@ -1387,6 +1455,15 @@ export class Arsenal {
           g.fillStyle = 'rgba(150,100,255,0.16)'; g.beginPath(); g.arc(s.x, s.y, s.r * 2.3 * pulse, 0, Math.PI * 2); g.fill();
           g.strokeStyle = 'rgba(232,219,255,0.9)'; g.lineWidth = 2;
           for (let k = 0; k < 3; k++) { const st = t * 6 + k * 2.1; g.beginPath(); g.arc(s.x, s.y, s.r * (1.05 + k * 0.18) * pulse, st, st + 1.4); g.stroke(); }
+        });
+        if (s.reach > s.r) glow(() => {                                              // the two arms
+          for (let j = 0; j < 2; j++) {
+            const an = s.arm + j * Math.PI, ca = Math.cos(an), sa = Math.sin(an), r0 = s.r * 0.8;
+            const gr = g.createLinearGradient(s.x + ca * r0, s.y + sa * r0, s.x + ca * s.reach, s.y + sa * s.reach);
+            gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.35, 'rgba(180,140,255,0.8)'); gr.addColorStop(1, 'rgba(180,140,255,0)');
+            g.strokeStyle = gr; g.lineCap = 'round'; g.lineWidth = 7 + Math.sin(t * 30) * 1.5;
+            g.beginPath(); g.moveTo(s.x + ca * r0, s.y + sa * r0); g.lineTo(s.x + ca * s.reach, s.y + sa * s.reach); g.stroke();
+          }
         });
         g.fillStyle = '#05030A'; g.beginPath(); g.arc(s.x, s.y, s.r * 0.75, 0, Math.PI * 2); g.fill();
       }

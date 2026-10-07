@@ -641,6 +641,45 @@ export class Level {
     return { removed, elements };
   }
 
+  // Tear out every 4px block of page in the wedge swept between angles a0 and a1 (radians) from radius rIn to rOut
+  // round (cx, cy); the wedge is wOut px wider either side at its outer end. Returns the content cells removed, the
+  // elements it tore into (with cell counts) and the blocks it took ([b, q, ...]).
+  tearWedge(cx, cy, a0, a1, rIn, rOut, wOut) {
+    if (a1 < a0) [a0, a1] = [a1, a0];
+    const per = BLOCK / CELL, seen = new Set(), rows = new Map(), elements = new Map(), torn = [];
+    let removed = 0;
+    for (let r = Math.max(2, rIn); r <= rOut; r += 2) {
+      const u = (2 + wOut * (r / rOut)) / r, step = 2 / r;
+      for (let an = a0 - u; an <= a1 + u; an += step) {
+        const x = cx + Math.cos(an) * r, y = cy + Math.sin(an) * r;
+        if (x < 0 || y < 0 || x >= this.W || y >= this.H) continue;
+        const b = (x / BLOCK) | 0, q = (y / BLOCK) | 0, k = q * this.colCols + b;
+        if (seen.has(k) || !this.blockThere(k)) continue;
+        seen.add(k);
+        for (let j = 0; j < per; j++) for (let i = 0; i < per; i++) {
+          const c = b * per + i, rw = q * per + j; if (c >= this.cols || rw >= this.rows) continue;
+          const kk = rw * this.cols + c;
+          if (this.elOwner[kk] >= 0) elements.set(this.elOwner[kk], (elements.get(this.elOwner[kk]) || 0) + 1);
+          if (this.solid[kk] === CONTENT) { this.lose(kk); removed++; }
+          this.solid[kk] = 0; this.owner[kk] = -1; this.elOwner[kk] = -1;
+        }
+        this.gone[k] = 1; torn.push(b, q);
+        let row = rows.get(q); if (!row) rows.set(q, row = []); row.push(b);
+      }
+    }
+    for (const t of this.tiles) for (const [q, bs] of rows) {
+      const y = q * BLOCK; if (y + BLOCK <= t.y || y >= t.y + t.h) continue;
+      bs.sort((m, n) => m - n);
+      let s = bs[0], p = bs[0];
+      for (let i = 1; i <= bs.length; i++) {
+        if (i < bs.length && bs[i] === p + 1) { p = bs[i]; continue; }
+        t.g.clearRect(s * BLOCK, y, (p - s + 1) * BLOCK, BLOCK);
+        if (i < bs.length) s = p = bs[i];
+      }
+    }
+    return { removed, elements, torn };
+  }
+
   // Ragged, burnt edges round the rectangle a blast tore a piece out of: bites carved into the page along its border
   raggedEdge(x, y, w, h) {
     const per = 2 * (w + h);
