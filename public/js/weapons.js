@@ -7,7 +7,7 @@ import { Fire } from './fire.js';
 // ---------------------------------------------------------------- sprites
 const IMG = {};
 export const SPRITES = ['blaster', 'ak47', 'minigun', 'scatter', 'sniper', 'launcher', 'rocket', 'laser', 'well', 'flamer', 'drone', 'nuke',
-  'mirv', 'star', 'wand', 'grenade', 'jetpack', 'bomb', 'jet', 'warhead'];
+  'mirv', 'star', 'grenade', 'jetpack', 'bomb', 'jet', 'warhead'];
 function scan(img) {
   const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
   const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0);
@@ -100,12 +100,9 @@ export const WEAPONS = [
   { id: 'nuke', key: '=', len: 34, name: 'Mini Nuke', cd: 9, color: '#F5E04A', held: true, holdAt: 0.4, gripDrop: 2, blast: 190 },                                 // tactical warhead
   { id: 'mirv', pose: 'rifle', key: ',', len: 40, name: 'Cluster Launcher', cd: 1.9, color: '#FFB238', held: true, holdAt: 0.42, gripDrop: 2, blast: 46 },       // a shell that chutes down and splits into eight
   { id: 'star', pose: 'rifle', key: '.', len: 38, name: 'Pulsar', cd: 1.6, color: '#7CF2FF', held: true, holdAt: 0.4, gripDrop: 2 },                             // a neutron star: sweeping jets, then it collapses
-  { id: 'wand', key: '/', len: 24, name: 'Magic Wand', cd: 2.2, color: '#FF8AE6', held: true, holdAt: 0.25, gripDrop: 1 },                                       // a spell: a ritual circle, a blast and six echoes
 ];
-// the pulsar and the spell, by the numbers
+// the pulsar, by the numbers
 const STAR = { radius: 42, form: 0.45, life: 4.2, collapse: 0.55, spin: 3, reach: 390, grow: 0.9 };
-const SPELL = { ritual: 1.4, circle: 112, radius: 80, echoes: 6, echoRadius: 26, echoGap: 0.22, linger: 3 };
-const PASTEL = ['#FFB3F0', '#C9A6FF', '#9BE7FF', '#FFF4A6', '#FFFFFF'];
 const WPN = Object.fromEntries(WEAPONS.map(w => [w.id, w]));
 
 // bites out of a slab sprite's border, so a piece a blast tore out is not a perfect rectangle
@@ -143,7 +140,7 @@ export class Arsenal {
     this.index = 0; this.cool = 0; this.grenadeCool = 0;
     this.shots = []; this.beam = null; this.beamTick = 0;
     this.flames = []; this.burning = new Map(); this.drone = null; this.strikeCool = 0;
-    this.stars = []; this.spells = []; this.chutes = []; this.burnT = 0;
+    this.stars = []; this.chutes = []; this.burnT = 0;
     this.trails = []; this.strikes = []; this.mushrooms = []; this.popQ = []; this.clock = 0;
     this.stats = { letters: 0, shots: 0, booms: 0 };
   }
@@ -240,11 +237,6 @@ export class Arsenal {
           audio.starFire(); player.push(-Math.cos(a) * 140, -Math.sin(a) * 90); player.recoil = 0.9;
           fx.muzzle(h.x, h.y, a, 'ring', '#9BE7FF', 1.4);
         }
-        if (w.id === 'wand') {
-          this.shots.push({ kind: 'spell', x: h.x, y: h.y, vx: Math.cos(a) * 520, vy: Math.sin(a) * 520, a, life: 6, t: 0, range, tw: 0 });
-          audio.twinkle(); player.recoil = 0.5;
-          for (let i = 0; i < 8; i++) fx.spark(h.x, h.y, (Math.random() - 0.5) * 160, (Math.random() - 0.5) * 160, PASTEL[(Math.random() * 5) | 0], 2, 0.4, { glow: true, grav: 0 });
-        }
         if (w.id === 'nuke') {
           this.shots.push({ kind: 'warhead', x: h.x, y: h.y, vx: Math.cos(a) * 720, vy: Math.sin(a) * 720 - 60, a, life: 5, t: 0, range });
           audio.nukeLaunch(); player.push(-Math.cos(a) * 320, -Math.sin(a) * 200); player.recoil = 1; fx.kick('big');
@@ -290,7 +282,6 @@ export class Arsenal {
     this.updateBurning(dt);
     this.updateShots(dt);
     this.updateStars(dt);
-    this.updateSpells(dt);
     for (const c of this.chutes) { c.t += dt; c.vy += (28 - c.vy) * Math.min(1, dt * 1.6); c.vx -= c.vx * 0.8 * dt; c.x += (c.vx + Math.sin(c.t * 3.1) * 26) * dt; c.y += c.vy * dt; }
     this.chutes = this.chutes.filter(c => c.t < 2.4);
     // fire on the page, and the damage it does to the elements it eats into (settled four times a second)
@@ -638,7 +629,8 @@ export class Arsenal {
     fx.impulse(x, y, r * 3, force * 0.9);
     // set what's left nearby on fire: letters, and for the bigger blasts a few spots of page along the rim
     for (const id of level.lettersInRadius(x, y, r * 1.6)) if (Math.random() < 0.25) this.ignite(id);
-    if (r >= 40 && this.fire) for (let i = 0; i < 2 + r / 25; i++) { const an = Math.random() * Math.PI * 2, d = r * (1 + Math.random() * 0.5); this.fire.heatAt(x + Math.cos(an) * d, y + Math.sin(an) * d, 1, 3); }
+    // and a ring of fire just outside the crater: the page there catches and burns outward for a while
+    if (r >= 30 && this.fire) { const n = Math.round(r / 7); for (let i = 0; i < n; i++) { const an = i / n * Math.PI * 2 + Math.random() * 0.3, d = r * (1.1 + Math.random() * 0.5); this.fire.heatAt(x + Math.cos(an) * d, y + Math.sin(an) * d, 1, 9); } }
     const hx = player.x, hy = player.y - player.height / 2, dx = hx - x, dy = hy - y, d = Math.hypot(dx, dy) || 1;
     if (d < r * 2.2) { const k = force * 0.62 * (1 - d / (r * 2.2)); player.push(dx / d * k, dy / d * k - k * 0.3); } // rocket-jumps
     audio.boom(r);
@@ -804,51 +796,6 @@ export class Arsenal {
     for (let i = 0; i < 160; i++) { const an = Math.random() * Math.PI * 2, sp = 200 + Math.random() * 900; fx.spark(x, y, Math.cos(an) * sp, Math.sin(an) * sp, Math.random() < 0.3 ? '#FFFFFF' : '#7CF2FF', 2 + (Math.random() * 2 | 0), 0.3 + Math.random() * 0.6, { glow: true, grav: 0.3 }); }
     const dx = player.x - x, dy = player.y - player.height / 2 - y, d = Math.hypot(dx, dy) || 1;
     if (d < h * 7) { const k = 1500 * Math.pow(1 - d / (h * 7), 0.75); player.push(dx / d * k, dy / d * k - k * 0.3); }
-  }
-
-  // ---------------------------------------------------------------- the wand
-  // The spell lands and draws a ritual circle: sparks orbit it for a moment, then it bursts (the letters at its heart
-  // vanish in sparkles, the rest are flung, the page gets a crater), and six smaller echoes pop round the circle.
-  updateSpells(dt) {
-    const { level, fx, audio } = this.game, P = SPELL;
-    for (const sp of this.spells) {
-      const was = sp.t; sp.t += dt;
-      if (sp.t < P.ritual) {
-        const k = sp.t / P.ritual;
-        for (let i = 0; i < 2 + Math.round(4 * k); i++) {
-          const an = Math.random() * Math.PI * 2, rr = P.circle * (1.05 + Math.random() * 1.5), tang = (1.6 + 4 * k) * rr * 0.5;
-          fx.spark(sp.x + Math.cos(an) * rr, sp.y + Math.sin(an) * rr, -Math.sin(an) * tang - Math.cos(an) * (40 + 200 * k), Math.cos(an) * tang - Math.sin(an) * (40 + 200 * k), PASTEL[(Math.random() * 5) | 0], 1 + (Math.random() * 3 | 0), 0.8 + Math.random() * 0.7, { glow: true, grav: 0 });
-        }
-        if (Math.floor(sp.t / 0.15) !== Math.floor(was / 0.15)) audio.twinkle(0.5 + k * 0.5);
-        fx.shake = Math.max(fx.shake, 1 + 2 * k);
-        continue;
-      }
-      if (was < P.ritual) {
-        // the blast
-        audio.wandBlast();
-        for (const id of level.lettersInRadius(sp.x, sp.y, P.radius * 1.1)) {
-          const L = level.letters[id], cx = L.x + L.w / 2, cy = L.y + L.h / 2;
-          if (level.killLetter(id)) { this.stats.letters++; for (let i = 0; i < 3; i++) fx.spark(cx, cy, (cx - sp.x) * 2 + (Math.random() - 0.5) * 200, (cy - sp.y) * 2 - 100 - Math.random() * 200, PASTEL[(Math.random() * 5) | 0], 2, 0.6 + Math.random() * 0.4, { glow: true, grav: 0.3 }); }
-        }
-        this.explode(sp.x, sp.y, P.radius, 1300);
-        level.scorch(sp.x, sp.y, P.radius * 0.9, P.radius * 2.5, 0.8);
-        fx.rings.push({ x: sp.x, y: sp.y, r: P.radius * 0.8, max: P.radius * 2.8, t: 0, dur: 0.5 });
-        for (let i = 0; i < 170; i++) { const an = Math.random() * Math.PI * 2, v = 200 + Math.random() * 900; fx.spark(sp.x, sp.y, Math.cos(an) * v, Math.sin(an) * v, PASTEL[(Math.random() * 5) | 0], 1 + (Math.random() * 3 | 0), 0.35 + Math.random() * 0.55, { glow: true, grav: 0.2 }); }
-        fx.flash = Math.max(fx.flash, 0.6);
-      }
-      const after = sp.t - P.ritual;
-      for (let i = 0; i < P.echoes; i++) {
-        if (sp.popped & (1 << i)) continue;
-        const at = 0.3 + i * P.echoGap, an = sp.rot + i / P.echoes * Math.PI * 2, ex = sp.x + Math.cos(an) * P.circle * 0.9, ey = sp.y + Math.sin(an) * P.circle * 0.9;
-        if (after >= at) {
-          sp.popped |= 1 << i; audio.twinkle(1.2);
-          this.explode(ex, ey, P.echoRadius, 700);
-          for (let k = 0; k < 40; k++) { const a2 = Math.random() * Math.PI * 2, v = 120 + Math.random() * 480; fx.spark(ex, ey, Math.cos(a2) * v, Math.sin(a2) * v, PASTEL[(Math.random() * 5) | 0], 2, 0.3 + Math.random() * 0.4, { glow: true, grav: 0.2 }); }
-        } else if (Math.random() < 0.6) fx.spark(ex + (Math.random() - 0.5) * 8, ey + (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 30, -10 - Math.random() * 40, PASTEL[(Math.random() * 5) | 0], 2, 0.4, { glow: true, grav: 0 });
-      }
-      if (after < P.linger && Math.random() < 0.7) { const an = Math.random() * Math.PI * 2, rr = Math.sqrt(Math.random()) * P.radius * 2.2; fx.spark(sp.x + Math.cos(an) * rr, sp.y + Math.sin(an) * rr, (Math.random() - 0.5) * 20, -20 - Math.random() * 30, PASTEL[(Math.random() * 5) | 0], 1 + (Math.random() * 2 | 0), 1.5 + Math.random() * 2, { glow: true, grav: -0.05 }); }
-    }
-    this.spells = this.spells.filter(sp => sp.t < SPELL.ritual + 0.3 + SPELL.echoes * SPELL.echoGap + SPELL.linger);
   }
 
   // ---------------------------------------------------------------- flamethrower: spray that sets letters burning
@@ -1212,21 +1159,20 @@ export class Arsenal {
         this.stepMirv(s, dt);
       } else if (s.kind === 'bomblet') {
         this.stepBomblet(s, dt);
-      } else if (s.kind === 'seed' || s.kind === 'spell') {
-        // straight to the aim point (or the first thing in the way), where the star forms / the ritual starts
+      } else if (s.kind === 'seed') {
+        // straight to the aim point (or the first thing in the way), where the star forms
         let nx = s.x + s.vx * dt, ny = s.y + s.vy * dt, arrived = false;
         if (s.range != null) {
           const step = Math.hypot(nx - s.x, ny - s.y), left = Math.max(0, s.range - (s.dist || 0));
           if (step >= left) { const f = left / (step || 1); nx = s.x + (nx - s.x) * f; ny = s.y + (ny - s.y) * f; arrived = true; }
           s.dist = (s.dist || 0) + Math.min(step, left);
         }
-        const col = s.kind === 'seed' ? (Math.random() < 0.3 ? '#FFFFFF' : '#7CF2FF') : PASTEL[(Math.random() * 5) | 0];
+        const col = Math.random() < 0.3 ? '#FFFFFF' : '#7CF2FF';
         for (let i = 0; i < 2; i++) fx.spark(s.x + (Math.random() - 0.5) * 6, s.y + (Math.random() - 0.5) * 6, -s.vx * 0.1 + (Math.random() - 0.5) * 60, -s.vy * 0.1 + (Math.random() - 0.5) * 60, col, 2, 0.3, { glow: true, grav: 0 });
-        if (s.kind === 'spell' && (s.tw -= dt) <= 0) { s.tw = 0.11 + Math.random() * 0.08; audio.twinkle(0.6); }
         const p = this.trace(s.x, s.y, nx, ny) || (arrived || s.life <= 0 ? { x: nx, y: ny } : null);
         if (p) {
           const X = Math.max(20, Math.min(level.W - 20, p.x)), Y = Math.max(20, Math.min(level.H - 20, p.y));
-          if (s.kind === 'seed') this.formStar(X, Y); else this.spells.push({ x: X, y: Y, t: 0, popped: 0, rot: Math.random() * Math.PI * 2 });
+          this.formStar(X, Y);
           s.life = 0;
         } else { s.x = nx; s.y = ny; }
       } else if (s.kind === 'rocket') {
@@ -1297,7 +1243,6 @@ export class Arsenal {
     const glow = fn => { g.save(); g.globalCompositeOperation = 'lighter'; fn(); g.restore(); g.save(); g.globalAlpha = 0.85; fn(); g.restore(); };
     this.fire?.draw(g);
     this.drawStars(g, t, glow);
-    this.drawSpells(g, t, glow);
     for (const c of this.chutes) { // a spent parachute drifting off
       g.save(); g.translate(c.x, c.y); g.rotate(Math.sin(c.t * 3.1) * 0.25);
       g.fillStyle = '#F2EBDD'; g.beginPath(); g.arc(0, 0, 11, Math.PI, 0); g.fill(); g.fillStyle = '#C8341E'; g.fillRect(-11, -1, 22, 2);
@@ -1343,8 +1288,8 @@ export class Arsenal {
         g.save(); g.translate(s.x, s.y); g.rotate(s.a);
         g.fillStyle = '#2A2F2A'; g.fillRect(-4, -3, 8, 6); g.fillStyle = '#F5E04A'; g.fillRect(-1, -3, 2, 6); g.fillStyle = '#C8341E'; g.fillRect(3, -2, 2, 4);
         g.restore();
-      } else if (s.kind === 'seed' || s.kind === 'spell') {
-        const col = s.kind === 'seed' ? '#7CF2FF' : '#FF8AE6';
+      } else if (s.kind === 'seed') {
+        const col = '#7CF2FF';
         glow(() => { g.fillStyle = col; g.beginPath(); g.arc(s.x, s.y, 4 + Math.sin(t * 40) * 1.2, 0, Math.PI * 2); g.fill(); g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(s.x, s.y, 1.8, 0, Math.PI * 2); g.fill(); });
       } else if (s.kind === 'rocket') {
         g.save(); g.translate(s.x, s.y); g.rotate(s.a);
@@ -1490,20 +1435,6 @@ export class Arsenal {
         g.fillStyle = rg; g.beginPath(); g.arc(st.x, st.y, core * 2.6 + 6, 0, Math.PI * 2); g.fill();
       });
       g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(st.x, st.y, Math.max(1.5, core * 0.5), 0, Math.PI * 2); g.fill();
-    }
-  }
-  // the ritual circle while the spell gathers itself
-  drawSpells(g, t, glow) {
-    for (const sp of this.spells) {
-      if (sp.t >= SPELL.ritual) continue;
-      const k = sp.t / SPELL.ritual, R = SPELL.circle;
-      glow(() => {
-        g.strokeStyle = `rgba(255,179,240,${0.35 + 0.5 * k})`; g.lineWidth = 1.5 + k * 2;
-        g.beginPath(); g.arc(sp.x, sp.y, R * (0.3 + 0.7 * Math.min(1, k * 2)), 0, Math.PI * 2); g.stroke();
-        g.strokeStyle = `rgba(201,166,255,${0.25 + 0.4 * k})`; g.lineWidth = 1;
-        for (let i = 0; i < 12; i++) { const an = sp.rot + t * 1.5 + i / 12 * Math.PI * 2, r0 = R * 0.78, r1 = R * (0.88 + 0.06 * Math.sin(t * 6 + i)); g.beginPath(); g.moveTo(sp.x + Math.cos(an) * r0, sp.y + Math.sin(an) * r0); g.lineTo(sp.x + Math.cos(an) * r1, sp.y + Math.sin(an) * r1); g.stroke(); }
-        g.fillStyle = `rgba(255,255,255,${0.4 + 0.6 * k})`; g.beginPath(); g.arc(sp.x, sp.y, 3 + k * 6 + Math.sin(t * 25) * 1.5, 0, Math.PI * 2); g.fill();
-      });
     }
   }
   drawRound(g, s) {

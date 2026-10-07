@@ -26,7 +26,6 @@ export const ITEMS = {
   bomb: 'single 500 lb aerial bomb seen from the side, nose pointing right, olive drab streamlined body, yellow band near the nose, tail fins at the back',
   mirv: 'oversized cluster bomb launcher, absurdly fat dark steel tube, a hazard-striped cluster shell loaded at the front with several small warhead tips showing, rear grip and shoulder rest',
   star: 'exotic particle cannon, dark metal body with a glowing cyan containment sphere in the middle, cooling fins, a forward emitter dish, thick cables, grip and trigger',
-  wand: 'ornate magic wand, slender dark wood shaft with small gold rings and a glowing pink crystal star at the tip, held horizontally pointing right',
   jetpack: 'compact jetpack backpack seen from the side, two metal thruster tanks with nozzles at the bottom, straps, grey and orange, upright',
 };
 const seed = +seedArg;

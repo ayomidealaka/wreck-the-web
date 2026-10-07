@@ -89,10 +89,6 @@ export function drawCrosshair(g, x, y, w, { t = 0, kick = 0 } = {}) {
       }
       dot(2, '#FFFFFF'); break;
     }
-    case 'wand': { // magic: a four-point sparkle that breathes
-      const s = 6 + Math.round(Math.sin(t * 5) * 2);
-      boxes([[-s, 0, s * 2 + 1, 1], [0, -s, 1, s * 2 + 1], [-2, -2, 5, 5]], col); boxes([[-1, -1, 3, 3]], '#FFFFFF'); break;
-    }
     default:
       cross(4, 4); dot(1);
   }

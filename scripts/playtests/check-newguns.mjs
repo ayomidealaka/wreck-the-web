@@ -1,4 +1,4 @@
-// The flamethrower sets the page itself alight; the cluster launcher, pulsar and wand each run their course. Prints
+// The flamethrower sets the page itself alight; the cluster launcher and pulsar each run their course. Prints
 // what burned and screenshots each weapon mid-way. usage: node scripts/playtests/check-newguns.mjs <out>
 import puppeteer from 'puppeteer-core';
 setTimeout(() => { console.log('TIMEOUT'); process.exit(1); }, 240000);
@@ -46,13 +46,7 @@ await shot('cluster', target, 640, 420);
 const st = await p.evaluate(async q => { const g = window.__game(), a = g.arsenal; a.formStar(q.x, q.y); await new Promise(r => setTimeout(r, 1600)); return { stars: a.stars.length, len: Math.round(a.stars[0]?.len || 0) }; }, target);
 console.log('pulsar: formed', st.stars === 1, 'jets reach', st.len);
 await shot('pulsar', target, 760, 560);
-await wait(3800);
+await wait(4600);
 console.log('pulsar after the burst: stars left', await p.evaluate(() => window.__game().arsenal.stars.length), '; explosions so far', await p.evaluate(() => window.__game().arsenal.stats.booms));
 await shot('pulsar_after', target, 760, 560);
-// 4. wand: the spell at the target, ritual then blast
-const target2 = { x: target.x - 250, y: target.y + 220 };
-await p.evaluate(q => { window.__game().arsenal.spells.push({ x: q.x, y: q.y, t: 0, popped: 0, rot: 1 }); }, target2);
-await wait(900); await shot('wand_ritual', target2, 560, 440);
-await wait(1800); await shot('wand_blast', target2, 560, 440);
-console.log('wand: echoes popped', await p.evaluate(() => window.__game().arsenal.spells[0]?.popped ?? 'done'));
 console.log('errors:', errs.length ? errs.join(' | ') : 'none'); process.exit(0);
