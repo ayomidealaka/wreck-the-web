@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#0E0B16">
 <title>Wreck the Web</title>
+<meta name="description" content="Type in any website and it becomes a level. Shoot the words off it, blow holes through it and knock it apart.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Wreck the Web">
+<meta property="og:description" content="Type in any website and it becomes a level. Shoot the words off it, blow holes through it and knock it apart.">
+<meta property="og:image" content="https://raw.githubusercontent.com/ayomidealaka/wreck-the-web/main/public/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
@@ -16,6 +24,10 @@
 
 <section id="menu" class="screen">
   <div class="menu-inner">
+    <nav class="menu-top" aria-label="About the game">
+      <button id="newsBtn" class="pill" type="button">What's new <span class="muted" id="versionTag"></span><i class="dot" id="newsDot" hidden></i></button>
+      <a id="starLink" class="pill star" href="https://github.com/ayomidealaka/wreck-the-web" target="_blank" rel="noopener">★ Star on GitHub<span class="star-count" id="starCount" hidden></span></a>
+    </nav>
     <h1 class="logo"><span>WRECK</span><span>THE WEB</span></h1>
     <p class="tag">Type any website. Then blow it to pieces.</p>
     <form id="go" class="addr" autocomplete="off">
@@ -109,6 +121,28 @@
     <h2>Ranks</h2>
     <p class="muted">Earn XP by knocking letters off, smashing things, destroying websites and finishing the daily challenges.</p>
     <div id="ranksGrid" class="ranks-grid"></div>
+  </div>
+</section>
+
+<section id="news" class="screen dim" hidden>
+  <div class="menu-inner news-card">
+    <button class="results-close" data-act="close" aria-label="Close">&times;</button>
+    <h2>What's new</h2>
+    <p class="muted news-ver">Version 1.0 · October 2026</p>
+    <ul class="news-list">
+      <li><b>Ranks and medals.</b> Earn XP for every letter, image and website you wreck. Twelve ranks, Lurker to Web Wrecker, each with its own medal.</li>
+      <li><b>Daily challenges.</b> Three new ones every day, easy to hard, about the sites you destroy and the guns you use.</li>
+      <li><b>New guns.</b> A cluster launcher that splits into eight bomblets, and a pulsar whose jets sweep a disc out of the page.</li>
+      <li><b>Rail laser.</b> Charge it, then one pink beam cuts a trench to the edge of the page.</li>
+      <li><b>Gravity well.</b> It tears the page apart like a whirlpool and ends in a heavy burst.</li>
+      <li><b>Uzi.</b> Replaces the pistol: full-auto and cuts through letters.</li>
+      <li><b>The page burns.</b> The flamethrower sets the page alight and fire spreads across it. Every blast leaves a ring of fire.</li>
+      <li><b>Worlds behind the page.</b> Synthwave city, dusk mountains, sunny hills or deep space, a different one for each site.</li>
+      <li><b>Reload bars.</b> Each heavy weapon reloads on its own; the nuke takes 9 seconds.</li>
+      <li><b>Harder to finish.</b> A page counts as destroyed at 90% of its letters and 90% of its content. The results float over the page and you can keep going.</li>
+      <li>Big blasts no longer stall the game, the jetpack never runs out, and rockets go off right where you aim.</li>
+    </ul>
+    <p class="news-foot"><a href="https://github.com/ayomidealaka/wreck-the-web/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Full changelog</a> · <a href="https://github.com/ayomidealaka/wreck-the-web" target="_blank" rel="noopener">★ Star it on GitHub</a></p>
   </div>
 </section>
 

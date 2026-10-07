@@ -158,3 +158,19 @@ h2 { font-family: var(--pixel); font-size: 34px; margin: 0 0 6px; }
 .rank-card.locked canvas { filter: grayscale(1) brightness(0.45); }
 .rank-card.locked p:not(.muted) { color: var(--muted); }
 .rank-card.current { outline: 2px solid var(--gold); background: rgb(255 210 90 / 0.08); }
+
+/* the menu's top row: release notes and the GitHub link */
+.menu-top { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; }
+.pill { position: relative; display: inline-flex; align-items: center; gap: 6px; font: 400 12px/1.4 var(--pixel); color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; text-decoration: none; }
+.pill:hover { border-color: var(--muted); }
+.pill .dot { position: absolute; top: -2px; right: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--hot); box-shadow: 0 0 0 2px var(--bg); }
+.pill.star { color: var(--gold); }
+.star-count { color: var(--ink); border-left: 1px solid var(--line); padding-left: 7px; margin-left: 1px; }
+.news-card { position: relative; background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 26px 22px 20px; width: min(620px, 100%); }
+.news-card h2 { margin: 0; }
+.news-ver { margin: 2px 0 14px; font-size: 12px; }
+.news-list { margin: 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 9px; font-size: 13px; line-height: 1.5; }
+.news-list b { color: var(--gold); font-weight: 700; }
+.news-foot { margin: 18px 0 0; font-size: 12px; }
+.news-foot a { color: var(--cyan); }

@@ -1,9 +1,26 @@
 {
-  "name": "destroy-web",
-  "version": "0.1.0",
+  "name": "wreck-the-web",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Turn any website into a destructible level.",
+  "license": "MIT",
+  "homepage": "https://github.com/ayomidealaka/wreck-the-web#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ayomidealaka/wreck-the-web.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ayomidealaka/wreck-the-web/issues"
+  },
+  "keywords": [
+    "game",
+    "pixel-art",
+    "browser-game",
+    "destruction",
+    "puppeteer",
+    "canvas"
+  ],
   "scripts": {
     "start": "node server/index.js"
   },

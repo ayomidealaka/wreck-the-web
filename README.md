@@ -1,7 +1,16 @@
 # Wreck the Web
 
+[![GitHub stars](https://img.shields.io/github/stars/ayomidealaka/wreck-the-web?style=social)](https://github.com/ayomidealaka/wreck-the-web/stargazers)
+[![Release](https://img.shields.io/github/v/release/ayomidealaka/wreck-the-web)](https://github.com/ayomidealaka/wreck-the-web/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Type in a website and it becomes a level. Run across the page, shoot the words off it, blow holes through the
 pictures and knock whole sections loose until the thing comes apart.
+
+![Wikipedia being wrecked over the synthwave city](docs/screenshot.png)
+
+If it made you laugh, [give it a star](https://github.com/ayomidealaka/wreck-the-web) so more people find it. What
+changed in each version is in the [changelog](CHANGELOG.md).
 
 ```bash
 npm install
@@ -111,3 +120,12 @@ node scripts/playtests/profile-nuke.mjs                 # frame times and hot fu
 The sprites were generated with [PixelLab](https://www.pixellab.ai) and cut up by the scripts in `scripts/art/`,
 which read the API key from `.env` (see `.env.example`). The reference sprite sheets used to measure the run and
 jump cycles are not part of the repository.
+
+## Contributing
+
+Bug reports and ideas are welcome in [issues](https://github.com/ayomidealaka/wreck-the-web/issues). For a pull
+request, run the playtests that touch your change and say what you checked.
+
+## License
+
+[MIT](LICENSE).

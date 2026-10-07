@@ -241,6 +241,28 @@ $('#playerName').addEventListener('change', e => { progress.setName(e.target.val
 $('#nameReroll').addEventListener('click', () => { progress.setName(randomName()); $('#playerName').value = progress.name; });
 $('#ranksBtn').addEventListener('click', () => { renderRanks(); $('#ranks').hidden = false; });
 $('#ranks').addEventListener('click', e => { if (e.target.closest('[data-act="close"]') || e.target.id === 'ranks') $('#ranks').hidden = true; });
+// ------------------------------------------------------------------ release notes and the GitHub link (menu)
+const VERSION = '1.0';
+const seen = () => { try { return localStorage.getItem('wtw-seen-version'); } catch { return null; } };
+$('#versionTag').textContent = `v${VERSION}`;
+$('#newsDot').hidden = seen() === VERSION;
+$('#newsBtn').addEventListener('click', () => {
+  $('#news').hidden = false; $('#newsDot').hidden = true;
+  try { localStorage.setItem('wtw-seen-version', VERSION); } catch {}
+});
+$('#news').addEventListener('click', e => { if (e.target.closest('[data-act="close"]') || e.target.id === 'news') $('#news').hidden = true; });
+// the star count, once a session; the link works without it
+(async () => {
+  let n = null;
+  try { n = sessionStorage.getItem('wtw-stars'); } catch {}
+  if (n === null) {
+    try {
+      const r = await fetch('https://api.github.com/repos/ayomidealaka/wreck-the-web');
+      if (r.ok) { n = String((await r.json()).stargazers_count ?? ''); try { sessionStorage.setItem('wtw-stars', n); } catch {} }
+    } catch {}
+  }
+  if (+n > 0) { $('#starCount').textContent = Number(n).toLocaleString(); $('#starCount').hidden = false; }
+})();
 setInterval(() => { if (!screens.menu.hidden) $('#dailyEnds').textContent = `New in ${fmtLeft(progress.dailyEnds - Date.now())}`; }, 30000);
 
 let strikeBtn = null; // touch airstrike button (dimmed while the strike recharges)
