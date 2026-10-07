@@ -1,0 +1,7 @@
+node_modules/
+.DS_Store
+.env
+*.mp4
+*.webm
+# reference sprite sheets used to measure animation cycles: not ours to publish
+public/art/ref/

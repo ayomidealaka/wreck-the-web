@@ -1,0 +1,16 @@
+{
+  "name": "destroy-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Turn any website into a destructible level.",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "puppeteer-core": "^25.12.0"
+  }
+}
