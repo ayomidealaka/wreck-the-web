@@ -6,7 +6,7 @@ import { Arsenal, WEAPONS, loadWeaponArt } from './weapons.js';
 import { Audio } from './audio.js';
 import { Input, isTouch } from './input.js';
 import { ClipRecorder } from './recorder.js';
-import { loadPacks, loadManifest, CastCharacter } from './cast.js';
+import { loadPacks, loadManifest /* , CastCharacter */ } from './cast.js'; // CastCharacter: the classic cast, switched off
 import { RigCharacter } from './rig.js';
 import { drawCrosshair } from './crosshair.js';
 import { Progress, randomName } from './progress.js';
@@ -104,7 +104,7 @@ async function load(raw) {
     const bitmap = await createImageBitmap(blob);
     await document.fonts.load(`12px ${PIXEL}`).catch(() => {});
     // the chosen character + weapon art first (generous limit for slow connections; a late sprite is swapped in)
-    await Promise.race([Promise.all([castReady.then(chosenReady), weaponArt]), new Promise(r => setTimeout(r, 30000))]);
+    await Promise.race([Promise.all([characterReady, weaponArt]), new Promise(r => setTimeout(r, 30000))]);
     game?.destroy();
     game = new Game(meta, bitmap);
     history.replaceState(null, '', `?url=${encodeURIComponent(url)}`);
@@ -134,71 +134,86 @@ async function saveClip() {
   } catch (e) { toast(e.message); }
 }
 
-// ------------------------------------------------------------------ characters
-// The picker appears straight from the manifest; the saved character's frames load first and the rest follow in
-// parallel. A game never starts as a stick figure just because the art was slow (e.g. over a tunnel): it waits for
-// the chosen character, and if that still runs late the sprite is swapped in when it arrives.
-// Character styles (packs) switch from the menu; each pack remembers its own last pick. ?pack=<id> picks one by link.
-const cast = new Map(), loading = new Map();
-let chosenId = null, packId = null;
-const chosenReady = () => loading.get(chosenId) || Promise.resolve(null);
-const pickKey = () => `wtw-character:${packId}`;
-function choose(id) {
-  chosenId = id;
-  try { localStorage.setItem(pickKey(), id); } catch {}
-  document.querySelectorAll('#cast button').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === id));
-  chosenReady().then(c => { if (c && chosenId === id && game && game.player.sprite !== c) game.player.sprite = c; });
-}
+// ------------------------------------------------------------------ character
+// Ash, the rigged character with his own weapons and art (the 'test' pack in public/art/packs/), is the one character.
+// A game never starts as a stick figure just because the art was slow (e.g. over a tunnel): it waits for him, and if
+// he still runs late the sprite is swapped in when he arrives.
+const ASH = { pack: 'test', id: 'r1' };
+let character = null;
 const weaponArt = loadWeaponArt().catch(e => console.warn('weapon art unavailable', e));
-async function loadCast(pack) {
-  packId = pack.id; chosenId = null; cast.clear(); loading.clear();
-  try { localStorage.setItem('wtw-pack', pack.id); } catch {}
-  document.querySelectorAll('#packs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === pack.id));
-  const root = document.getElementById('cast'); root.replaceChildren();
-  try {
-    const list = await loadManifest(pack);
-    if (packId !== pack.id) return;                                  // switched again while this was loading
-    let saved = null;
-    try { saved = localStorage.getItem(pickKey()) ?? (pack.id === 'classic' ? localStorage.getItem('wtw-character') : null); } catch {}
-    if (!list.some(d => d.id === saved)) saved = list[0]?.id;
-    const order = [...list].sort((x, y) => (y.id === saved) - (x.id === saved));
-    for (const def of order) {
-      loading.set(def.id, (def.rig ? new RigCharacter(def) : new CastCharacter(def)).load()   // rigged (posed parts) or classic frames
-        .then(c => { if (packId === pack.id) cast.set(def.id, c); return c; })
-        .catch(e => { console.warn('character unavailable', def.id, e); root.querySelector(`button[data-id="${def.id}"]`)?.remove(); return null; }));
-    }
-    for (const def of list) {
-      const b = document.createElement('button'); b.type = 'button'; b.dataset.id = def.id; b.title = def.name;
-      // front-facing portrait (generated); falls back to a crop of the sprite once it has loaded
-      let cv;
-      if (def.portrait) cv = Object.assign(new Image(), { src: `${def.root}faces/${def.portrait}`, alt: '' });
-      else { cv = document.createElement('canvas'); loading.get(def.id).then(c => c && cv.replaceWith(Object.assign(c.faceCanvas(4), { style: cv.style.cssText }))); }
-      cv.style.width = cv.style.height = '64px';
-      b.append(cv, Object.assign(document.createElement('span'), { textContent: def.name }));
-      b.onclick = () => choose(def.id);
-      root.append(b);
-    }
-    document.getElementById('castWrap').hidden = false;
-    document.getElementById('castEmpty').hidden = list.length > 0;
-    if (list.length) { choose(saved); await loading.get(saved); }
-  } catch (e) { console.warn('cast unavailable', pack.id, e); document.getElementById('castEmpty').hidden = false; }
-}
-let castReady = (async () => {
-  const packs = await loadPacks();
-  let want = new URLSearchParams(location.search).get('pack');
-  if (!want) try { want = localStorage.getItem('wtw-pack'); } catch {}
-  const first = packs.find(p => p.id === want) || packs[0];
-  const bar = document.getElementById('packs');
-  if (packs.length > 1) { // the style toggle only shows once there is more than one style to plug in
-    for (const p of packs) {
-      const b = document.createElement('button'); b.type = 'button'; b.dataset.id = p.id; b.textContent = p.name;
-      b.onclick = () => { if (p.id !== packId) castReady = loadCast(p); };
-      bar.append(b);
-    }
-    bar.hidden = false;
-  }
-  await loadCast(first);
-})();
+const characterReady = (async () => {
+  const pack = (await loadPacks()).find(p => p.id === ASH.pack);
+  const def = (await loadManifest(pack)).find(d => d.id === ASH.id);
+  character = await new RigCharacter(def).load();
+  if (game && !game.player.sprite) game.player.sprite = character;
+  return character;
+})().catch(e => { console.warn('character unavailable', e); return null; });
+
+// The classic PixelLab cast and the character picker, switched off now that Ash is the character. To bring them
+// back: put the classic entry back in public/art/packs.json
+// ({ "id": "classic", "name": "Classic", "manifest": "/art/cast.json", "root": "/art/" }, first in the list), the #castWrap markup in index.html, the CastCharacter
+// import above and this block, and use castReady.then(chosenReady) / cast.get(chosenId) where characterReady /
+// character are used.
+// const cast = new Map(), loading = new Map();
+// let chosenId = null, packId = null;
+// const chosenReady = () => loading.get(chosenId) || Promise.resolve(null);
+// const pickKey = () => `wtw-character:${packId}`;
+// function choose(id) {
+//   chosenId = id;
+//   try { localStorage.setItem(pickKey(), id); } catch {}
+//   document.querySelectorAll('#cast button').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === id));
+//   chosenReady().then(c => { if (c && chosenId === id && game && game.player.sprite !== c) game.player.sprite = c; });
+// }
+// const weaponArt = loadWeaponArt().catch(e => console.warn('weapon art unavailable', e));
+// async function loadCast(pack) {
+//   packId = pack.id; chosenId = null; cast.clear(); loading.clear();
+//   try { localStorage.setItem('wtw-pack', pack.id); } catch {}
+//   document.querySelectorAll('#packs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.id === pack.id));
+//   const root = document.getElementById('cast'); root.replaceChildren();
+//   try {
+//     const list = await loadManifest(pack);
+//     if (packId !== pack.id) return;                                  // switched again while this was loading
+//     let saved = null;
+//     try { saved = localStorage.getItem(pickKey()) ?? (pack.id === 'classic' ? localStorage.getItem('wtw-character') : null); } catch {}
+//     if (!list.some(d => d.id === saved)) saved = list[0]?.id;
+//     const order = [...list].sort((x, y) => (y.id === saved) - (x.id === saved));
+//     for (const def of order) {
+//       loading.set(def.id, (def.rig ? new RigCharacter(def) : new CastCharacter(def)).load()   // rigged (posed parts) or classic frames
+//         .then(c => { if (packId === pack.id) cast.set(def.id, c); return c; })
+//         .catch(e => { console.warn('character unavailable', def.id, e); root.querySelector(`button[data-id="${def.id}"]`)?.remove(); return null; }));
+//     }
+//     for (const def of list) {
+//       const b = document.createElement('button'); b.type = 'button'; b.dataset.id = def.id; b.title = def.name;
+//       // front-facing portrait (generated); falls back to a crop of the sprite once it has loaded
+//       let cv;
+//       if (def.portrait) cv = Object.assign(new Image(), { src: `${def.root}faces/${def.portrait}`, alt: '' });
+//       else { cv = document.createElement('canvas'); loading.get(def.id).then(c => c && cv.replaceWith(Object.assign(c.faceCanvas(4), { style: cv.style.cssText }))); }
+//       cv.style.width = cv.style.height = '64px';
+//       b.append(cv, Object.assign(document.createElement('span'), { textContent: def.name }));
+//       b.onclick = () => choose(def.id);
+//       root.append(b);
+//     }
+//     document.getElementById('castWrap').hidden = false;
+//     document.getElementById('castEmpty').hidden = list.length > 0;
+//     if (list.length) { choose(saved); await loading.get(saved); }
+//   } catch (e) { console.warn('cast unavailable', pack.id, e); document.getElementById('castEmpty').hidden = false; }
+// }
+// let castReady = (async () => {
+//   const packs = await loadPacks();
+//   let want = new URLSearchParams(location.search).get('pack');
+//   if (!want) try { want = localStorage.getItem('wtw-pack'); } catch {}
+//   const first = packs.find(p => p.id === want) || packs[0];
+//   const bar = document.getElementById('packs');
+//   if (packs.length > 1) { // the style toggle only shows once there is more than one style to plug in
+//     for (const p of packs) {
+//       const b = document.createElement('button'); b.type = 'button'; b.dataset.id = p.id; b.textContent = p.name;
+//       b.onclick = () => { if (p.id !== packId) castReady = loadCast(p); };
+//       bar.append(b);
+//     }
+//     bar.hidden = false;
+//   }
+//   await loadCast(first);
+// })();
 
 // ------------------------------------------------------------------ profile, ranks, daily objectives (menu)
 const fmtLeft = ms => { const m = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h ? `${h}h ${m % 60}m` : `${m}m`; };
@@ -296,8 +311,8 @@ class Game {
     this.fx = new FX(this.level);
     this.audio = audio;
     this.player = new Player(this.level, Math.min(this.level.W * 0.3, 360), -60);
-    this.player.sprite = cast.get(chosenId) || null;
-    if (!this.player.sprite) chosenReady().then(c => { if (c && game === this) this.player.sprite = c; }); // art still on its way
+    this.player.sprite = character;
+    if (!this.player.sprite) characterReady.then(c => { if (c && game === this) this.player.sprite = c; }); // art still on its way
     this.arsenal = new Arsenal(this);
     this.arsenal.onCredit = (kind, src, n) => this.reward(kind === 'letters' ? progress.letters(src, n) : progress.elements(src, n));
     this.runXp = 0; this.xpPop = null; this.notes = []; this.medals = [];   // XP this game, the +XP flash, challenge banners, rank-ups to show

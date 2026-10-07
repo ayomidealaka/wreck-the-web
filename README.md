@@ -44,9 +44,10 @@ forms a star whose two jets sweep a widening disc out of the page before it coll
 radial cracks. Every blast leaves a ring of fire round its crater, and the flamethrower sets the page itself alight:
 fire spreads across it, chars it and burns it away.
 
-**Characters:** a classic pixel cast, and a rigged character, Ash, whose arms, legs and head are posed every frame:
-proper run and jump cycles, hands solved onto each weapon's grips, recoil springs, a weapon swing-in, a shotgun pump
-and a grenade throw. Switch styles from the menu.
+**Character:** Ash, a rigged character whose arms, legs and head are posed every frame: proper run and jump cycles,
+hands solved onto each weapon's grips, recoil springs, a weapon swing-in, a shotgun pump and a grenade throw. He has
+his own art for every weapon, the jetpack, the drone and the airstrike. (The original classic pixel cast is still in
+`public/art/` but switched off.)
 
 ## Progress
 
@@ -89,7 +90,7 @@ ready and R saves it as MP4 (or WebM) with sound.
 ```
 server/              the page snapshotter and the static server
 public/              the game: index.html, style.css, js/
-public/art/          sprites, the classic cast (cast.json) and style packs (packs.json, packs/)
+public/art/          sprites, Ash (packs/test/, listed in packs.json) and the switched-off classic cast (cast.json)
 scripts/art/         the art pipeline: PixelLab generation, skeleton estimation, rig cutting
 scripts/playtests/   headless playtests, visual checks and profilers
 ```

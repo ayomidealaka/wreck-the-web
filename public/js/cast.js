@@ -11,13 +11,13 @@ const CANVAS = 128;
 // in-game size of the sprites relative to their drawn pixels (the art is ~48px tall; this makes it ~60)
 export const SPRITE_SCALE = 1.25;
 
-// Character style packs, switchable from the menu. public/art/packs.json lists them: { id, name, manifest, root } where
-// manifest is the pack's cast.json and root is the folder its art paths are relative to. Classic = the original cast
-// (/art/cast.json, art under /art/), so it is never touched by a new pack.
+// Character style packs. public/art/packs.json lists them: { id, name, manifest, root } where manifest is the pack's
+// cast.json and root is the folder its art paths are relative to. Only Ash's pack ('test') is in play; the classic cast
+// (/art/cast.json, art under /art/) is switched off but its art is kept.
 let packs = null;
 export async function loadPacks() {
   if (!packs) { try { packs = await (await fetch('/art/packs.json', { cache: 'no-cache' })).json(); } catch { packs = null; } }
-  if (!Array.isArray(packs) || !packs.length) packs = [{ id: 'classic', name: 'Classic', manifest: '/art/cast.json', root: '/art/' }];
+  if (!Array.isArray(packs) || !packs.length) packs = [{ id: 'test', name: 'Ash', manifest: '/art/packs/test/cast.json', root: '/art/packs/test/' }];
   return packs;
 }
 const manifests = new Map();

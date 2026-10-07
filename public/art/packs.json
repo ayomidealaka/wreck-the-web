@@ -1,4 +1,3 @@
 [
-  { "id": "classic", "name": "Classic", "manifest": "/art/cast.json", "root": "/art/" },
-  { "id": "test", "name": "Test", "manifest": "/art/packs/test/cast.json", "root": "/art/packs/test/" }
+  { "id": "test", "name": "Ash", "manifest": "/art/packs/test/cast.json", "root": "/art/packs/test/" }
 ]

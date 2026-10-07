@@ -24,12 +24,14 @@
 
 <section id="menu" class="screen">
   <div class="menu-inner">
-    <nav class="menu-top" aria-label="About the game">
-      <button id="newsBtn" class="pill" type="button">What's new <span class="muted" id="versionTag"></span><i class="dot" id="newsDot" hidden></i></button>
-      <a id="starLink" class="pill star" href="https://github.com/ayomidealaka/wreck-the-web" target="_blank" rel="noopener"><svg class="medal-star" viewBox="0 0 3 3" width="12" height="12" shape-rendering="crispEdges" aria-hidden="true"><path fill="#FFD25A" d="M1 0h1v1H1zM0 1h1v1H0zM2 1h1v1H2zM1 2h1v1H1z"/><path fill="#FFF8D8" d="M1 1h1v1H1z"/></svg>Star on GitHub<span class="star-count" id="starCount" hidden></span></a>
-    </nav>
-    <h1 class="logo"><span>WRECK</span><span>THE WEB</span></h1>
-    <p class="tag">Type any website. Then blow it to pieces.</p>
+    <header class="menu-head">
+      <nav class="menu-top" aria-label="About the game">
+        <button id="newsBtn" class="pill" type="button">What's new <span class="muted" id="versionTag"></span><i class="dot" id="newsDot" hidden></i></button>
+        <a id="starLink" class="pill star" href="https://github.com/ayomidealaka/wreck-the-web" target="_blank" rel="noopener"><svg class="medal-star" viewBox="0 0 3 3" width="12" height="12" shape-rendering="crispEdges" aria-hidden="true"><path fill="#FFD25A" d="M1 0h1v1H1zM0 1h1v1H0zM2 1h1v1H2zM1 2h1v1H1z"/><path fill="#FFF8D8" d="M1 1h1v1H1z"/></svg>Star on GitHub<span class="star-count" id="starCount" hidden></span></a>
+      </nav>
+      <h1 class="logo"><span>WRECK</span> <span>THE WEB</span></h1>
+      <p class="tag">Type any website. Then blow it to pieces.</p>
+    </header>
     <form id="go" class="addr" autocomplete="off">
       <span class="lock" aria-hidden="true">⌁</span>
       <input id="url" name="url" type="text" inputmode="url" spellcheck="false" placeholder="wikipedia.org" aria-label="Website address" required>
@@ -44,6 +46,16 @@
       <button data-url="ohentpay.com">Ohentpay</button>
       <button data-url="bbc.com">BBC</button>
     </div>
+    <!-- character picker, switched off: Ash is the one character (see the characters section of js/main.js)
+    <div class="cast-wrap" id="castWrap" hidden>
+      <div class="cast-head">
+        <p class="cast-label">Your wrecker</p>
+        <div class="packs" id="packs" role="group" aria-label="Character style" hidden></div>
+      </div>
+      <div class="cast" id="cast" role="group" aria-label="Choose your character"></div>
+      <p class="cast-label" id="castEmpty" hidden>No characters in this style yet: you'll play as the stick figure.</p>
+    </div>
+    -->
     <div class="profile">
       <div class="profile-who">
         <input id="playerName" class="player-name" maxlength="24" spellcheck="false" aria-label="Your name">
@@ -56,25 +68,22 @@
       <p class="daily-head"><span>Daily challenges</span><span class="muted" id="dailyEnds"></span></p>
       <div id="dailyList" class="daily-list"></div>
     </div>
-    <div class="cast-wrap" id="castWrap" hidden>
-      <div class="packs" id="packs" role="group" aria-label="Character style" hidden></div>
-      <p class="cast-label">Your wrecker</p>
-      <div class="cast" id="cast" role="group" aria-label="Choose your character"></div>
-      <p class="cast-label" id="castEmpty" hidden>No characters in this style yet: you'll play as the stick figure.</p>
-    </div>
-    <dl class="keys desktop-only">
-      <dt>A D</dt><dd>run</dd>
-      <dt>W / Space</dt><dd>jump · hold to go higher · keep holding for jetpack · again to flip</dd>
-      <dt>S</dt><dd>drop through a platform</dd>
-      <dt>Shift</dt><dd>dash (or double-tap A / D) · dash through your own shots to supercharge them, into your grenades to punt them</dd>
-      <dt><svg class="mouse-icon" viewBox="0 0 13 15" width="13" height="15" shape-rendering="crispEdges" role="img" aria-label="Left click"><path fill="var(--hot)" d="M3 1h3v5H1V2h2z"/><path fill="currentColor" d="M3 0h7v1H3zM1 1h2v1H1zM10 1h2v1h-2zM0 2h1v11H0zM12 2h1v11h-1zM1 13h2v1H1zM10 13h2v1h-2zM3 14h7v1H3zM1 6h11v1H1zM6 1h1v5H6z"/></svg></dt><dd>aim + shoot</dd>
-      <dt><svg class="mouse-icon" viewBox="0 0 13 15" width="13" height="15" shape-rendering="crispEdges" role="img" aria-label="Right click"><path fill="var(--hot)" d="M7 1h3v1h2v4H7z"/><path fill="currentColor" d="M3 0h7v1H3zM1 1h2v1H1zM10 1h2v1h-2zM0 2h1v11H0zM12 2h1v11h-1zM1 13h2v1H1zM10 13h2v1h-2zM3 14h7v1H3zM1 6h11v1H1zM6 1h1v5H6z"/></svg><span class="or">/</span>G</dt><dd>grenade</dd>
-      <dt>1–0 - =<span class="or">/</span><svg class="mouse-icon" viewBox="0 0 13 15" width="13" height="15" shape-rendering="crispEdges" role="img" aria-label="Scroll wheel"><path fill="var(--hot)" d="M5 2h3v3H5z"/><path fill="currentColor" d="M3 0h7v1H3zM1 1h2v1H1zM10 1h2v1h-2zM0 2h1v11H0zM12 2h1v11h-1zM1 13h2v1H1zM10 13h2v1h-2zM3 14h7v1H3zM1 6h11v1H1zM6 1h1v1H6zM6 5h1v1H6z"/></svg></dt><dd>switch weapon</dd>
-      <dt>[</dt><dd>call an airstrike on the cursor</dd>
-      <dt>R</dt><dd>save replay clip</dd>
-      <dt>Esc · M</dt><dd>pause · mute</dd>
-    </dl>
-    <p class="keys touch-only">Left stick moves (push up to jump, hold for jetpack). Right stick aims and fires.</p>
+    <p class="touch-hint touch-only">Left stick moves (push up to jump, hold for jetpack). Right stick aims and fires.</p>
+    <section class="keys-card desktop-only" aria-label="Keyboard controls">
+      <p class="keys-head">Controls</p>
+      <dl class="keys">
+        <div class="key"><dt><kbd>A</kbd><kbd>D</kbd></dt><dd>Run</dd></div>
+        <div class="key"><dt><kbd>W</kbd><span class="or">/</span><kbd>Space</kbd></dt><dd>Jump · hold for jetpack · again to flip</dd></div>
+        <div class="key"><dt><kbd>S</kbd></dt><dd>Drop through a ledge</dd></div>
+        <div class="key"><dt><kbd>Shift</kbd></dt><dd>Dash, or double-tap A / D</dd></div>
+        <div class="key"><dt><kbd class="mouse"><svg class="mouse-icon" viewBox="0 0 13 15" width="13" height="15" shape-rendering="crispEdges" role="img" aria-label="Left click"><path fill="var(--hot)" d="M3 1h3v5H1V2h2z"/><path fill="currentColor" d="M3 0h7v1H3zM1 1h2v1H1zM10 1h2v1h-2zM0 2h1v11H0zM12 2h1v11h-1zM1 13h2v1H1zM10 13h2v1h-2zM3 14h7v1H3zM1 6h11v1H1zM6 1h1v5H6z"/></svg></kbd></dt><dd>Aim and shoot</dd></div>
+        <div class="key"><dt><kbd class="mouse"><svg class="mouse-icon" viewBox="0 0 13 15" width="13" height="15" shape-rendering="crispEdges" role="img" aria-label="Right click"><path fill="var(--hot)" d="M7 1h3v1h2v4H7z"/><path fill="currentColor" d="M3 0h7v1H3zM1 1h2v1H1zM10 1h2v1h-2zM0 2h1v11H0zM12 2h1v11h-1zM1 13h2v1H1zM10 13h2v1h-2zM3 14h7v1H3zM1 6h11v1H1zM6 1h1v5H6z"/></svg></kbd><span class="or">/</span><kbd>G</kbd></dt><dd>Grenade</dd></div>
+        <div class="key"><dt><kbd>1–0</kbd><kbd>-</kbd><kbd>=</kbd><span class="or">/</span><kbd class="mouse"><svg class="mouse-icon" viewBox="0 0 13 15" width="13" height="15" shape-rendering="crispEdges" role="img" aria-label="Scroll wheel"><path fill="var(--hot)" d="M5 2h3v3H5z"/><path fill="currentColor" d="M3 0h7v1H3zM1 1h2v1H1zM10 1h2v1h-2zM0 2h1v11H0zM12 2h1v11h-1zM1 13h2v1H1zM10 13h2v1h-2zM3 14h7v1H3zM1 6h11v1H1zM6 1h1v1H6zM6 5h1v1H6z"/></svg></kbd></dt><dd>Switch weapon</dd></div>
+        <div class="key"><dt><kbd>[</kbd></dt><dd>Airstrike on the cursor</dd></div>
+        <div class="key"><dt><kbd>R</kbd></dt><dd>Save a replay clip</dd></div>
+        <div class="key"><dt><kbd>Esc</kbd><span class="or">/</span><kbd>M</kbd></dt><dd>Pause / mute</dd></div>
+      </dl>
+    </section>
   </div>
 </section>
 
