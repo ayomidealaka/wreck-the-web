@@ -27,7 +27,8 @@ as a link: `http://localhost:4600/?url=wikipedia.org`.
 **Weapons:** pistol, AK‑47, minigun, shotgun, .50 sniper, 40mm launcher, rocket launcher, flamethrower, laser,
 gravity well, gatling drone, mini nuke, cluster launcher and pulsar. Each has its own reticle, recoil
 and sound. Rounds fly as far as the cursor and punch paper holes where they land; the sniper's round carves a trench
-and ricochets off images; the laser cuts straight through whatever is on the way to the cursor; rockets and the nuke
+and ricochets off images; the rail laser charges for a moment, then fires one beam to the edge of the page that cuts
+a trench through everything on the way, flinging the letters it passes and leaving the edges glowing; rockets and the nuke
 go off at the aim point. The cluster shell drifts down under a parachute and splits into eight bomblets. The pulsar
 forms a star whose two jets sweep a widening disc out of the page before it collapses and bursts into a crater with
 radial cracks. Every blast leaves a ring of fire round its crater, and the flamethrower sets the page itself alight:

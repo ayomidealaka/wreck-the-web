@@ -1,4 +1,4 @@
-// The laser cuts straight through to its target; the .50 ricochets off elements; a blast leaves ragged edges where it
+// The rail laser cuts straight through to the page edge; the .50 ricochets off elements; a blast leaves ragged edges where it
 // tore a piece out. usage: node scripts/playtests/check-cuts.mjs <out>
 import puppeteer from 'puppeteer-core';
 setTimeout(() => { console.log('TIMEOUT'); process.exit(1); }, 200000);
@@ -14,17 +14,16 @@ await wait(1500);
 for (let k = 0; k < 6; k++) { await p.keyboard.press('KeyS'); await wait(350); }
 await wait(600);
 const toScreen = q => p.evaluate(q => { const g = window.__game(); return { x: (q.x - g.cam.x + g.cam.sx) * g.cam.zoom, y: (q.y - g.cam.y + g.cam.sy) * g.cam.zoom }; }, q);
-// 1. laser: a beam run straight through a dense text row for half a second
-const lz = await p.evaluate(async () => {
+// 1. rail laser: one shot straight along a dense text row
+const lz = await p.evaluate(() => {
   const g = window.__game(), L = g.level, a = g.arsenal;
   const rows = {}; for (const l of L.letters) if (l.alive && l.w > 3) (rows[l.y] ||= []).push(l);
   const row = Object.values(rows).filter(r => r.length > 30).sort((p, q) => q.length - p.length)[0]; row.sort((p, q) => p.x - q.x);
-  const y = row[0].y + row[0].h * 0.6, x0 = row[0].x - 30, x1 = row[Math.min(row.length - 1, 40)].x, before = a.stats.letters;
-  a.aimPt = { x: x1, y }; const h = { x: x0, y };
-  for (let i = 0; i < 25; i++) { a.beamTick = 0; a.laser(1 / 50, h, 0); }
-  return { popped: a.stats.letters - before, segs: a.beam.segs.length, end: [Math.round(a.beam.segs[0].x1), Math.round(a.beam.segs[0].y1)], aim: [Math.round(x1), Math.round(y)] };
+  const y = row[0].y + row[0].h * 0.6, before = a.stats.letters;
+  a.fireRail({ x: row[0].x - 30, y }, 0);
+  return { popped: a.stats.letters - before, rowLetters: row.length, beam: a.rails.length };
 });
-console.log('laser half a second along a text row: letters popped', lz.popped, '; one straight segment:', lz.segs === 1, '; ends at the aim:', JSON.stringify(lz.end), JSON.stringify(lz.aim));
+console.log('rail laser along a text row: letters popped', lz.popped, 'of a', lz.rowLetters, 'letter row ; beam drawn:', lz.beam === 1);
 // 2. the .50 into an element at a slant: does it bounce?
 const rc = await p.evaluate(async () => {
   const g = window.__game(), L = g.level, a = g.arsenal;

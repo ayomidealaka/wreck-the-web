@@ -239,22 +239,6 @@ export class Audio {
     this.noise_({ type: 'lowpass', f0: 400, f1: 80, q: 0.5, a: 0.8, d: 4, peak: 0.6, verb: 0.8 });
     for (let i = 0; i < 26; i++) this.noise_({ type: 'highpass', f0: 1500 + Math.random() * 4000, d: 0.015, peak: 0.08 + Math.random() * 0.14, t: 0.4 + Math.random() * 3.2, verb: 0.4 });
   }
-  laser(on) { // detuned buzzing beam with a sweeping filter
-    this.loop('laser', on, c => {
-      const a = c.createOscillator(); a.type = 'sawtooth'; a.frequency.value = 180;
-      const b = c.createOscillator(); b.type = 'sawtooth'; b.frequency.value = 183.5;
-      const s = c.createOscillator(); s.type = 'square'; s.frequency.value = 90;
-      const mix = c.createGain(); mix.gain.value = 0.35; a.connect(mix); b.connect(mix); s.connect(mix);
-      const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1500; f.Q.value = 3;
-      const lfo = c.createOscillator(); lfo.frequency.value = 7; const lg = c.createGain(); lg.gain.value = 600; lfo.connect(lg); lg.connect(f.frequency);
-      const hiss = this.noiseSrc(c), hf = c.createBiquadFilter(); hf.type = 'highpass'; hf.frequency.value = 5000; const hg = c.createGain(); hg.gain.value = 0.15;
-      hiss.connect(hf); hf.connect(hg); hg.connect(f);
-      mix.connect(f);
-      return { out: f, nodes: [a, b, s, lfo, hiss] };
-    }, 0.16);
-    if (on && !this.laserOn && this.ok()) this.osc({ type: 'sine', f0: 400, f1: 1800, d: 0.12, peak: 0.12 });
-    this.laserOn = on;
-  }
   wellFire() { if (this.ok()) { this.osc({ type: 'sine', f0: 900, f1: 120, d: 0.3, peak: 0.25, verb: 0.4 }); this.noise_({ type: 'bandpass', f0: 600, f1: 200, d: 0.3, peak: 0.2 }); } }
   well() { // the black hole opening: a falling wobble and wind
     if (!this.ok()) return;
@@ -351,6 +335,9 @@ export class Audio {
   starSweep() { if (this.ok()) this.noise_({ type: 'bandpass', f0: 400, f1: 2400, q: 1.5, d: 0.3, peak: 0.16 }); }
   starCollapse() { if (this.ok()) { this.osc({ type: 'sawtooth', f0: 400, f1: 40, d: 0.55, peak: 0.25 }); this.noise_({ type: 'lowpass', f0: 1200, f1: 200, d: 0.55, peak: 0.2 }); } }
   starEnd() { if (this.ok()) { this.noise_({ type: 'lowpass', f0: 2500, f1: 120, d: 1.4, peak: 0.9 }); this.osc({ type: 'sine', f0: 90, f1: 28, d: 1.2, peak: 0.6 }); this.osc({ type: 'triangle', f0: 3000, f1: 200, d: 0.5, peak: 0.2 }); } }
+  // the rail laser: a rising whine while it charges, then a crack, a falling zap and a deep thump
+  railCharge() { if (this.ok()) { this.osc({ type: 'sawtooth', f0: 220, f1: 1800, d: 0.38, peak: 0.12 }); this.osc({ type: 'sine', f0: 440, f1: 3200, d: 0.38, peak: 0.06 }); } }
+  rail() { if (this.ok()) { this.noise_({ type: 'highpass', f0: 2400, f1: 500, d: 0.35, peak: 0.6 }); this.osc({ type: 'sawtooth', f0: 1800, f1: 60, d: 0.42, peak: 0.32 }); this.osc({ type: 'sine', f0: 95, f1: 30, d: 0.55, peak: 0.55 }); this.noise_({ type: 'lowpass', f0: 700, f1: 120, d: 0.3, peak: 0.45 }); } }
   // the .50 glancing off something hard: a short metallic whine
   ricochet() { if (this.ok()) { this.osc({ type: 'triangle', f0: 2600 + Math.random() * 600, f1: 900, d: 0.16, peak: 0.16 }); this.noise_({ type: 'highpass', f0: 5000, d: 0.03, peak: 0.1 }); } }
   paperHit() {
@@ -365,5 +352,5 @@ export class Audio {
   // legacy names
   shot() { this.blaster(); }
   launch() { this.rocketLaunch(); }
-  stopLoops() { for (const k of Object.keys(this.loops)) this.loop(k, false); this.laserOn = this.flameOn = false; }
+  stopLoops() { for (const k of Object.keys(this.loops)) this.loop(k, false); this.flameOn = false; }
 }

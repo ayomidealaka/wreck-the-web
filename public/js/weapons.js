@@ -72,7 +72,8 @@ export function droneParts(body, gun, bodyW, gunL) {
   return { body, gun, sb, sg, mount, pivot: { x: Math.min(gun.width * 0.12, 3 / sg), y: tip.y }, tip };
 }
 const DRONE = {};
-const LASER_REACH = 1400, LASER_CUTS = 6;   // how far the beam goes, and how many things it cuts per tick
+// the rail laser: charge time, how far the beam reaches, the trench's half-width, the hit to every element it touches
+const RAIL = { charge: 0.38, reach: 4000, width: 7, damage: 130 / 16 };
 const SLUG_BOUNCES = 3;                    // the .50 ricochets off elements this many times
 const DRONE_BATTERY = 30, DRONE_RECHARGE = 8;
 const JET_SCALE = 4;   // the airstrike jet, drawn at 4x its sprite (about 170px long)   // seconds of flight, then it blows up and needs this long to recharge
@@ -94,7 +95,7 @@ export const WEAPONS = [
   { id: 'launcher', pose: 'rifle', key: '6', len: 28, name: 'Grenade Launcher', cd: 0.38, color: '#B5C27A', held: true, holdAt: 0.45, gripDrop: 2, blast: 64 },                  // 40mm HE
   { id: 'rocket', key: '7', len: 37, name: 'Rocket Launcher', cd: 0.8, color: '#FF5A4E', held: true, holdAt: 0.45, gripDrop: 2, blast: 86 },                      // RPG / AT4
   { id: 'flamer', pose: 'rifle', key: '8', len: 33, name: 'Flamethrower', cd: 0, color: '#FF8A2E', held: true, holdAt: 0.45, gripDrop: 1 },
-  { id: 'laser', pose: 'rifle', key: '9', len: 31, name: 'Laser', cd: 0, color: '#FF3DCB', held: true, holdAt: 0.36, gripDrop: 2 },
+  { id: 'laser', pose: 'rifle', key: '9', len: 31, name: 'Rail Laser', cd: 1.1, color: '#7CF2FF', held: true, holdAt: 0.36, gripDrop: 2 },     // charges, then one beam through everything to the page edge
   { id: 'well', pose: 'rifle', key: '0', len: 24, name: 'Gravity Well', cd: 1.5, color: '#B48CFF', held: true, holdAt: 0.33, gripDrop: 2 },
   { id: 'drone', key: '-', name: 'Gatling Drone', cd: 0.06, color: '#FF4A4A', held: false, dmg: { r: 4, pen: 20, splash: 4 } },
   { id: 'nuke', key: '=', len: 34, name: 'Mini Nuke', cd: 9, color: '#F5E04A', held: true, holdAt: 0.4, gripDrop: 2, blast: 190 },                                 // tactical warhead
@@ -104,6 +105,21 @@ export const WEAPONS = [
 // the pulsar, by the numbers
 const STAR = { radius: 42, form: 0.45, life: 4.2, collapse: 0.55, spin: 3, reach: 390, grow: 0.9 };
 const WPN = Object.fromEntries(WEAPONS.map(w => [w.id, w]));
+
+// distance from a point to a segment
+function segDist(px, py, x0, y0, x1, y1) {
+  const vx = x1 - x0, vy = y1 - y0, L2 = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((px - x0) * vx + (py - y0) * vy) / L2));
+  return Math.hypot(px - x0 - vx * t, py - y0 - vy * t);
+}
+// does a segment pass through a rectangle (slab test)
+function segRect(x0, y0, x1, y1, rx, ry, rw, rh) {
+  let t0 = 0, t1 = 1; const dx = x1 - x0, dy = y1 - y0;
+  for (const [p, q] of [[-dx, x0 - rx], [dx, rx + rw - x0], [-dy, y0 - ry], [dy, ry + rh - y0]]) {
+    if (p === 0) { if (q < 0) return false; continue; }
+    const r = q / p; if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; }
+  }
+  return true;
+}
 
 // bites out of a slab sprite's border, so a piece a blast tore out is not a perfect rectangle
 function tearEdges(c) {
@@ -138,7 +154,7 @@ export class Arsenal {
   constructor(game) {
     this.game = game;
     this.index = 0; this.cool = 0; this.grenadeCool = 0;
-    this.shots = []; this.beam = null; this.beamTick = 0;
+    this.shots = []; this.charge = null; this.rails = [];
     this.flames = []; this.burning = new Map(); this.drone = null; this.strikeCool = 0;
     this.stars = []; this.chutes = []; this.burnT = 0;
     this.trails = []; this.strikes = []; this.mushrooms = []; this.popQ = []; this.clock = 0;
@@ -169,18 +185,20 @@ export class Arsenal {
     // rounds fly only as far as the cursor: what's on the way gets hit, and if a round reaches the cursor
     // over bare page it punches a little hole in the paper there (the .50 keeps going)
     const range = inp.aimX == null ? null : Math.max(24, Math.hypot(inp.aimX - h.x, inp.aimY - h.y));
-    this.beam = null;
-    let laserOn = false, flameOn = false, spinOn = false;
+    let flameOn = false, spinOn = false;
 
     if (inp.fire) {
-      if (w.id === 'laser') { this.laser(dt, h, a); laserOn = true; }
-      else if (w.id === 'flamer') { this.flamer(dt, h, a); flameOn = true; }
+      if (w.id === 'flamer') { this.flamer(dt, h, a); flameOn = true; }
       else if (w.id === 'minigun') spinOn = true;
-      if (this.cool <= 0 && !['laser', 'flamer', 'drone'].includes(w.id)) {
+      if (this.cool <= 0 && !['flamer', 'drone'].includes(w.id)) {
         this.cool = w.cd; this.stats.shots++;
         const back = (k, s = 1) => h.x - Math.cos(a) * k * s;
         // where spent casings come out: the gun's ejection port when the character can tell us, else a little behind the muzzle
         const port = (k) => player.port?.() || { x: back(k), y: h.y - Math.sin(a) * k };
+        if (w.id === 'laser' && !this.charge) {                                  // the charge-up; the beam goes when it's full
+          this.charge = { t: 0, half: false }; audio.railCharge();
+          fx.rings.push({ x: h.x, y: h.y, r: 120, max: 4, t: 0, dur: 0.3 });
+        }
         if (w.id === 'blaster') {
           this.bullet(h, spread(0.02), 1500, 'bolt', w.dmg, { range }); audio.blaster(); player.recoil = 0.5;
           fx.muzzle(h.x, h.y, a, 'ring', '#9FF6FF');
@@ -245,7 +263,19 @@ export class Arsenal {
         }
       }
     }
-    audio.laser(laserOn); audio.flamer(flameOn); audio.minigunSpin(spinOn);
+    audio.flamer(flameOn); audio.minigunSpin(spinOn);
+    // the rail laser charging: it fires by itself when full (letting go doesn't stop it); switching away cancels it
+    if (this.charge) {
+      if (w.id !== 'laser') this.charge = null;
+      else {
+        const c = this.charge; c.t += dt / RAIL.charge;
+        if (!c.half && c.t >= 0.5) { c.half = true; fx.rings.push({ x: h.x, y: h.y, r: 90, max: 4, t: 0, dur: 0.18 }); }
+        player.gun.kick += (Math.random() - 0.5) * c.t * 0.5; fx.shake = Math.max(fx.shake, 1.6 * c.t);
+        if (c.t >= 1) { this.charge = null; this.fireRail(h, a); }
+      }
+    }
+    for (const r of this.rails) r.life -= dt;
+    if (this.rails.length) this.rails = this.rails.filter(r => r.life > 0);
 
     // the drone flies with you while it's the selected weapon
     if (w.id === 'drone') { if (!this.drone || this.drone.leaving) this.spawnDrone(); }
@@ -581,7 +611,7 @@ export class Arsenal {
     }
     const ya = Math.min(y0, y1), yb = Math.max(y0, y1);
     if (yb >= 0 && ya <= level.H) backdrop.reveal(ya - 6, yb + 6);
-    level.scorch(x0 + (x1 - x0) * 0.5, y0 + (y1 - y0) * 0.5, 0, 0, 0, [x0, y0, x1, y1]);
+    level.scorch(0, 0, 0, 0, 0.8, [x0, y0, x1, y1]);
   }
   // a round that reaches the cursor over bare page: a small scorched hole in the paper, a white flash, paper bits
   paperHole(s) {
@@ -636,37 +666,51 @@ export class Arsenal {
     audio.boom(r);
   }
 
-  // The laser: a straight beam to the aim point (1400px at most) that cuts everything along it. Letters pop, elements
-  // are burned through and carved, and where it ends over bare page it burns a hole. It eats through a few things a
-  // tick, nearest first, so a block of text goes in a sweep rather than all at once.
-  laser(dt, h, a) {
-    const { level, fx, backdrop } = this.game, ux = Math.cos(a), uy = Math.sin(a);
-    const reach = this.aimPt ? Math.min(LASER_REACH, Math.max(24, Math.hypot(this.aimPt.x - h.x, this.aimPt.y - h.y))) : LASER_REACH;
-    const end = { x: h.x + ux * reach, y: h.y + uy * reach };
-    this.beam = { segs: [{ x0: h.x, y0: h.y, x1: end.x, y1: end.y }], hit: false };
-    if (Math.random() < 0.6) { const u = Math.random(); fx.spark(h.x + ux * reach * u, h.y + uy * reach * u, (Math.random() - 0.5) * 40, (Math.random() - 0.5) * 40, '#FF7DE0', 2, 0.2, { glow: true, grav: 0 }); }
-    this.beamTick -= dt;
-    if (this.beamTick > 0) return;
-    this.beamTick = 0.02; this.stats.shots++;
-    let cut = 0, lastEl = -1, lastCarve = -99;
-    for (let u = 0; u <= reach && cut < LASER_CUTS; u += 3) {
-      const x = h.x + ux * u, y = h.y + uy * u;
-      if (!level.hitAt(x, y)) continue;
-      this.beam.hit = true;
-      const id = level.letterAt(x, y);
-      if (id >= 0) {
-        this.popLetter(id, ux * 240 + (Math.random() - 0.5) * 100, -200 - Math.random() * 220); cut++;
-        for (let i = 0; i < 2; i++) fx.spark(x, y, (Math.random() - 0.5) * 320, -Math.random() * 320, Math.random() < 0.5 ? '#FF3DCB' : '#FFFFFF', 2, 0.35, { glow: true });
-        continue;
-      }
-      const el = level.elementAt(x, y);
-      if (el >= 0 && el !== lastEl) { this.hurtElement(el, 0.12, x, y, ux, uy); lastEl = el; cut++; }
-      if (u - lastCarve >= 6 && (el < 0 || level.elements[el]?.alive)) { level.carve(x, y, 4, true); lastCarve = u; backdrop.reveal(y - 8, y + 8); }
-      if (Math.random() < 0.15) fx.smoke(x, y, 0, -40, 4, 0.7, 90);
+  // The rail laser's shot: one beam from the muzzle to the edge of the page along the aim. It cuts a trench through
+  // text, images and bare page alike; every letter it passes is flung off to one side or the other (half of them
+  // alight); falling pieces in its way shatter and flying letters are shoved along it; every element it touches
+  // takes a heavy hit; the trench's edges are charred and glow hot for a few seconds.
+  fireRail(h, a) {
+    const { level, fx, audio, player } = this.game, ux = Math.cos(a), uy = Math.sin(a), R = RAIL.width;
+    let len = RAIL.reach;
+    if (ux > 0) len = Math.min(len, (level.W - h.x) / ux); if (ux < 0) len = Math.min(len, -h.x / ux);
+    if (uy > 0) len = Math.min(len, (level.H - h.y) / uy); if (uy < 0) len = Math.min(len, (-200 - h.y) / uy);
+    len = Math.max(0, len);
+    const x0 = h.x, y0 = h.y, x1 = x0 + ux * len, y1 = y0 + uy * len;
+    for (const id of level.lettersNearLine(x0, y0, x1, y1, R + 6)) {
+      const side = Math.random() < 0.5 ? -1 : 1, sp = 250 + Math.random() * 350, along = 200 + Math.random() * 500;
+      this.popLetter(id, ux * along - uy * side * sp, uy * along + ux * side * sp - 150, Math.random() < 0.55);
     }
-    if (reach < LASER_REACH && end.x >= 0 && end.x < level.W && end.y >= 0 && end.y < level.H && !level.hitAt(end.x, end.y)) {
-      level.carve(end.x, end.y, 5, true); backdrop.reveal(end.y - 8, end.y + 8); fx.heat(end.x, end.y, 5);   // burning the paper at the aim
+    const cut = level.carveBand(x0, y0, x1, y1, R);
+    level.scorch(0, 0, R, R + 7, 1, [x0, y0, x1, y1]);
+    // the glowing edges only where there was page (not over the sky above it)
+    let ua = -1, ub = -1;
+    for (let u = 0; u <= len; u += 4) { const x = x0 + ux * u, y = y0 + uy * u; if (x >= 0 && x < level.W && y >= 0 && y < level.H) { if (ua < 0) ua = u; ub = u; } }
+    if (ua >= 0 && ub > ua) fx.heatLine(x0 + ux * ua, y0 + uy * ua, x0 + ux * ub, y0 + uy * ub, R, 3.6);
+    // what it cut out, thrown off to both sides in the page's own colours
+    for (let i = 0, n = Math.min(300, len / 4); i < n; i++) {
+      const u = Math.random() * len, x = x0 + ux * u, y = y0 + uy * u, col = level.colorAt(x, y); if (!col) continue;
+      const side = Math.random() < 0.5 ? -1 : 1, sp = 60 + Math.random() * 320;
+      fx.spark(x + (Math.random() - 0.5) * R, y + (Math.random() - 0.5) * R, -uy * side * sp + ux * (50 + Math.random() * 200), ux * side * sp - 40 - Math.random() * 120, col, 2 + (Math.random() * 2 | 0), 0.6 + Math.random() * 0.8);
     }
+    for (const el of cut.elements.keys()) { const e = level.elements[el]; if (e?.alive) this.hurtElement(el, RAIL.damage, e.x + e.w / 2, e.y + e.h / 2, ux, uy); }
+    for (const [id, B] of level.boxes.entries()) if (B.alive && segRect(x0, y0, x1, y1, B.x, B.y, B.w, B.h)) this.hurtBox(id, RAIL.damage, Math.max(B.x, Math.min(x0, B.x + B.w)), Math.max(B.y, Math.min(y0, B.y + B.h)));
+    for (const c of fx.chunks.slice()) {
+      const d = segDist(c.x, c.y, x0, y0, x1, y1);
+      if (c.slab) { if (d < R + Math.min(c.w, c.h) / 2) this.shatterSlab(c, c.x, c.y, 360); }
+      else if (d < R + 6) { c.vx += ux * 600; c.vy += uy * 600 - 200; c.va += (Math.random() - 0.5) * 60; c.rest = 0; }
+    }
+    // the beam itself, sparks and smoke all along it, the muzzle blast
+    this.rails.push({ x0, y0, x1, y1, life: 0.42, max: 0.42 });
+    for (let i = 0, n = Math.min(220, len / 7); i < n; i++) {
+      const u = Math.random() * len, an = a + (Math.random() < 0.5 ? -1 : 1) * Math.PI / 2 + (Math.random() - 0.5), sp = 60 + Math.random() * 260;
+      fx.spark(x0 + ux * u, y0 + uy * u, Math.cos(an) * sp + ux * 80, Math.sin(an) * sp + uy * 80, Math.random() < 0.5 ? '#FFFFFF' : '#7CF2FF', 2, 0.15 + Math.random() * 0.4, { glow: true, grav: 0 });
+    }
+    for (let i = 0, n = Math.min(60, len / 21); i < n; i++) { const u = Math.random() * len; fx.smoke(x0 + ux * u, y0 + uy * u, (Math.random() - 0.5) * 20, -6 - Math.random() * 18, 4 + Math.random() * 3, 0.8 + Math.random() * 0.8, 150); }
+    fx.muzzle(x0, y0, a, 'big', '#BFFBFF', 1.4);
+    for (let i = 0; i < 30; i++) { const an = a + Math.PI + (Math.random() - 0.5) * 2.4, sp = 200 + Math.random() * 400; fx.spark(x0, y0, Math.cos(an) * sp, Math.sin(an) * sp, '#FFFFFF', 2, 0.15 + Math.random() * 0.25, { glow: true, grav: 0 }); }
+    fx.flash = Math.max(fx.flash, 0.5); fx.kick('big');
+    audio.rail(); player.push(-ux * 260, -uy * 180); player.recoil = 1;
   }
 
   // ---------------------------------------------------------------- cluster launcher
@@ -1396,26 +1440,34 @@ export class Arsenal {
       }
       g.globalAlpha = 1;
     });
-    if (this.beam) {
-      const B = this.beam, wob = 1 + Math.sin(t * 60) * 0.35;
-      const path = () => { g.beginPath(); B.segs.forEach((sg, i) => { if (!i) g.moveTo(sg.x0, sg.y0); g.lineTo(sg.x1, sg.y1); }); };
-      g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineJoin = 'round';
-      g.strokeStyle = 'rgba(255,61,203,0.25)'; g.lineWidth = 12 * wob; path(); g.stroke();
-      g.strokeStyle = 'rgba(255,61,203,0.7)'; g.lineWidth = 5; path(); g.stroke();
-      g.strokeStyle = '#FFFFFF'; g.lineWidth = 1.6; path(); g.stroke();
-      for (const sg of B.segs.slice(0, B.hit ? B.segs.length : B.segs.length - 1)) { g.fillStyle = 'rgba(255,120,230,0.6)'; g.beginPath(); g.arc(sg.x1, sg.y1, 5 + Math.random() * 3, 0, Math.PI * 2); g.fill(); }
-      const s0 = B.segs[0]; g.fillStyle = 'rgba(255,180,240,0.8)'; g.beginPath(); g.arc(s0.x0, s0.y0, 3 + Math.random() * 1.5, 0, Math.PI * 2); g.fill();
-      g.restore();
-      // solid beam with a dark edge: shows on white pages as well as dark ones
-      g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
-      g.strokeStyle = 'rgba(90,0,70,0.55)'; g.lineWidth = 5.5; path(); g.stroke();
-      g.strokeStyle = '#FF3DCB'; g.lineWidth = 3.4; path(); g.stroke();
-      g.strokeStyle = '#FFD2F2'; g.lineWidth = 1.2; path(); g.stroke();
+    // the rail laser: charging at the muzzle (a growing glow with crackles), then the beam fading out
+    if (this.charge) {
+      const p = this.game.player.hand(), c = Math.min(1, this.charge.t), fl = 1 + Math.sin(t * 50) * 0.18, rr = (2.4 + c * 7.2) * fl;
+      glow(() => {
+        g.fillStyle = '#1E8FB0'; g.beginPath(); g.arc(p.x, p.y, rr + 2, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#7CF2FF'; g.beginPath(); g.arc(p.x, p.y, rr, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(p.x, p.y, rr * 0.55, 0, Math.PI * 2); g.fill();
+        g.lineWidth = 1;
+        for (let k = 0, n = 1 + Math.floor(c * 3); k < n; k++) {                   // crackles
+          let x = p.x, y = p.y, an = t * 17 + k * 2.1;
+          g.beginPath(); g.moveTo(x, y);
+          for (let s = 0, m = 8 + c * 16; s < m; s += 2) { an += Math.sin(t * 90 + s * 3 + k * 7) * 0.8; x += Math.cos(an) * 4; y += Math.sin(an) * 4; g.lineTo(x, y); }
+          g.strokeStyle = k % 2 ? '#7CF2FF' : '#FFFFFF'; g.stroke();
+        }
+      });
+    }
+    for (const r of this.rails) {
+      const X = Math.pow(r.life / r.max, 0.6), w = 16 * X + 1.5;
+      const line = () => { g.beginPath(); g.moveTo(r.x0, r.y0); g.lineTo(r.x1, r.y1); g.stroke(); };
+      g.save(); g.lineCap = 'round';
+      glow(() => {
+        g.strokeStyle = `rgba(124,242,255,${0.3 * X})`; g.lineWidth = w * 2.4; line();
+        g.strokeStyle = `rgba(124,242,255,${0.9 * X})`; g.lineWidth = w; line();
+        g.strokeStyle = `rgba(255,255,255,${X})`; g.lineWidth = w * 0.5; line();
+      });
       g.restore();
     }
   }
-  // A round in flight: a tracer as long as the distance it covers in a frame or two (never reaching back past the muzzle),
-  // drawn as a dark edge, a saturated body and a bright core so it reads on white pages, with a soft bloom for dark ones.
   // the pulsar: a hot core and two jets sweeping round it; it shrinks to a point as it collapses
   drawStars(g, t, glow) {
     const S = STAR;
@@ -1437,6 +1489,8 @@ export class Arsenal {
       g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(st.x, st.y, Math.max(1.5, core * 0.5), 0, Math.PI * 2); g.fill();
     }
   }
+  // A round in flight: a tracer as long as the distance it covers in a frame or two (never reaching back past the muzzle),
+  // drawn as a dark edge, a saturated body and a bright core so it reads on white pages, with a soft bloom for dark ones.
   drawRound(g, s) {
     const T0 = ROUND[s.style] || ROUND.tracer, sp = Math.hypot(s.vx, s.vy), ux = s.vx / sp, uy = s.vy / sp;
     // supercharged by a dash: fatter, longer, electric cyan

@@ -580,6 +580,67 @@ export class Level {
     }
   }
 
+  // Every 4px block whose centre lies within r of the segment, row by row: fn(b, q, distance). Long straight cuts (the
+  // rail beam) go through this rather than hundreds of round holes.
+  forBand(x0, y0, x1, y1, r, fn) {
+    const vx = x1 - x0, vy = y1 - y0, L2 = vx * vx + vy * vy || 1;
+    const q0 = Math.max(0, Math.floor((Math.min(y0, y1) - r) / BLOCK)), q1 = Math.min(this.colRows - 1, Math.floor((Math.max(y0, y1) + r) / BLOCK));
+    for (let q = q0; q <= q1; q++) {
+      const cy = q * BLOCK + BLOCK / 2;
+      let xa = Math.min(x0, x1), xb = Math.max(x0, x1);
+      if (Math.abs(vy) > 1e-6) {                                                   // where the segment passes this row
+        let ta = (cy - r - y0) / vy, tb = (cy + r - y0) / vy; if (ta > tb) [ta, tb] = [tb, ta];
+        ta = Math.max(0, ta); tb = Math.min(1, tb); if (ta > tb) continue;
+        xa = Math.min(x0 + vx * ta, x0 + vx * tb); xb = Math.max(x0 + vx * ta, x0 + vx * tb);
+      }
+      const b0 = Math.max(0, Math.floor((xa - r) / BLOCK)), b1 = Math.min(this.colCols - 1, Math.floor((xb + r) / BLOCK));
+      for (let b = b0; b <= b1; b++) {
+        const cx = b * BLOCK + BLOCK / 2, t = Math.max(0, Math.min(1, ((cx - x0) * vx + (cy - y0) * vy) / L2));
+        const d = Math.hypot(cx - x0 - vx * t, cy - y0 - vy * t);
+        if (d <= r) fn(b, q, d);
+      }
+    }
+  }
+  // the letters with ink within r of a segment
+  lettersNearLine(x0, y0, x1, y1, r) {
+    const ids = new Set(), per = BLOCK / CELL;
+    this.forBand(x0, y0, x1, y1, r, (b, q) => {
+      for (let j = 0; j < per; j++) for (let i = 0; i < per; i++) {
+        const c = b * per + i, rw = q * per + j;
+        if (c < this.cols && rw < this.rows) { const o = this.owner[rw * this.cols + c]; if (o >= 0) ids.add(o); }
+      }
+    });
+    return ids;
+  }
+  // a straight trench r wide either side of a segment, through content and bare page alike, with a slightly ragged
+  // edge; cleared in runs per row. Returns the content cells removed and the elements it cut into (with cell counts).
+  carveBand(x0, y0, x1, y1, r) {
+    const per = BLOCK / CELL, rows = new Map(), elements = new Map();
+    let removed = 0;
+    this.forBand(x0, y0, x1, y1, r, (b, q, d) => {
+      if (d > r * (0.86 + 0.14 * hash(b, q))) return;
+      for (let j = 0; j < per; j++) for (let i = 0; i < per; i++) {
+        const c = b * per + i, rw = q * per + j; if (c >= this.cols || rw >= this.rows) continue;
+        const k = rw * this.cols + c;
+        if (this.elOwner[k] >= 0) elements.set(this.elOwner[k], (elements.get(this.elOwner[k]) || 0) + 1);
+        if (this.solid[k] === CONTENT) { this.lose(k); removed++; }
+        this.solid[k] = 0; this.owner[k] = -1; this.elOwner[k] = -1;
+      }
+      this.gone[q * this.colCols + b] = 1;
+      let row = rows.get(q); if (!row) rows.set(q, row = []); row.push(b);
+    });
+    for (const t of this.tiles) for (const [q, bs] of rows) {
+      const y = q * BLOCK; if (y + BLOCK <= t.y || y >= t.y + t.h) continue;
+      let s = bs[0], p = bs[0];
+      for (let i = 1; i <= bs.length; i++) {
+        if (i < bs.length && bs[i] === p + 1) { p = bs[i]; continue; }
+        t.g.clearRect(s * BLOCK, y, (p - s + 1) * BLOCK, BLOCK);
+        if (i < bs.length) s = p = bs[i];
+      }
+    }
+    return { removed, elements };
+  }
+
   // Ragged, burnt edges round the rectangle a blast tore a piece out of: bites carved into the page along its border
   raggedEdge(x, y, w, h) {
     const per = 2 * (w + h);
@@ -598,16 +659,19 @@ export class Level {
   // .50's trench), 4px wide.
   scorch(cx, cy, r0, r1, strength = 1, seg = null) {
     const BANDS = [0.22, 0.45, 0.7, 0.9], dark = [[], [], [], []], light = [[], [], [], []];
-    let b0, b1, q0, q1, w0, w1;
-    if (seg) { const [x0, y0, x1, y1] = seg; b0 = Math.min(x0, x1) - 8; b1 = Math.max(x0, x1) + 8; q0 = Math.min(y0, y1) - 8; q1 = Math.max(y0, y1) + 8; w0 = 3.5; w1 = 9; }
-    else { b0 = cx - r1; b1 = cx + r1; q0 = cy - r1; q1 = cy + r1; w0 = r0; w1 = r1; }
-    b0 = Math.max(0, Math.floor(b0 / BLOCK)); b1 = Math.min(Math.ceil(this.W / BLOCK) - 1, Math.floor(b1 / BLOCK));
-    q0 = Math.max(0, Math.floor(q0 / BLOCK)); q1 = Math.min(Math.ceil(this.H / BLOCK) - 1, Math.floor(q1 / BLOCK));
-    const dist = seg ? (x, y) => { const [x0, y0, x1, y1] = seg, vx = x1 - x0, vy = y1 - y0, L2 = vx * vx + vy * vy || 1, t = Math.max(0, Math.min(1, ((x - x0) * vx + (y - y0) * vy) / L2)); return Math.hypot(x - x0 - vx * t, y - y0 - vy * t); }
-      : (x, y) => Math.hypot(x - cx, y - cy);
-    for (let q = q0; q <= q1; q++) for (let b = b0; b <= b1; b++) {
-      const x = b * BLOCK + BLOCK / 2, y = q * BLOCK + BLOCK / 2, d = dist(x, y);
+    // the blocks to consider: a band round the segment (its width r0..r1, default 3.5..9), or the disc round the point
+    const w0 = seg ? r0 || 3.5 : r0, w1 = seg ? r1 || 9 : r1, cand = [];
+    if (seg) this.forBand(seg[0], seg[1], seg[2], seg[3], w1, (b, q, d) => cand.push(b, q, d));
+    else {
+      const b0 = Math.max(0, Math.floor((cx - r1) / BLOCK)), b1 = Math.min(this.colCols - 1, Math.floor((cx + r1) / BLOCK));
+      const q0 = Math.max(0, Math.floor((cy - r1) / BLOCK)), q1 = Math.min(this.colRows - 1, Math.floor((cy + r1) / BLOCK));
+      for (let q = q0; q <= q1; q++) for (let b = b0; b <= b1; b++) cand.push(b, q, Math.hypot(b * BLOCK + BLOCK / 2 - cx, q * BLOCK + BLOCK / 2 - cy));
+    }
+    let q0 = Infinity, q1 = -Infinity;
+    for (let i = 0; i < cand.length; i += 3) {
+      const b = cand[i], q = cand[i + 1], d = cand[i + 2];
       if (d < w0 - 1 || d > w1) continue;
+      q0 = Math.min(q0, q); q1 = Math.max(q1, q);
       const j = Math.max(0, (d - w0) / Math.max(1, w1 - w0)), v = strength * Math.pow(1 - j, 1.4) + (hash(b, q) - 0.5) * 0.3;
       let band = -1; for (let k = BANDS.length - 1; k >= 0; k--) if (v >= BANDS[k]) { band = k; break; }
       if (band < 0) continue;
@@ -616,7 +680,7 @@ export class Level {
       if (lum < 0.3) { if (band >= 2) light[band].push(b, q); } else dark[band].push(b, q);
     }
     for (const t of this.tiles) {
-      if (q1 * BLOCK + BLOCK < t.y || q0 * BLOCK > t.y + t.h) continue;
+      if (q0 > q1 || q1 * BLOCK + BLOCK < t.y || q0 * BLOCK > t.y + t.h) continue;
       const g = t.g; g.globalCompositeOperation = 'source-atop';
       for (const [lists, rgb, mul] of [[dark, '28,14,9', 1], [light, '196,182,190', 0.6]]) lists.forEach((L, k) => {
         if (!L.length) return; g.fillStyle = `rgba(${rgb},${(BANDS[k] * mul).toFixed(2)})`;

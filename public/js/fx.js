@@ -8,6 +8,7 @@ export class FX {
     this.chunks = [];  // detached words: {sprite,x,y,vx,vy,a,va,life,w,h,rest}
     this.booms = [];   // {x,y,r,t,max}
     this.heats = [];   // hot rims round fresh bullet holes: {x,y,r,t}
+    this.heatLines = [];   // the two glowing edges of a fresh trench: {x0,y0,x1,y1,w,t,dur}
     this.rings = [];   // shockwave rings
     this.shake = 0;            // small random jitter (gunfire)
     this.maxChunks = 700; this.maxParts = 2200;   // lowered in degraded mode
@@ -58,6 +59,12 @@ export class FX {
   heat(x, y, r) {
     if (this.heats.length > 300) this.heats.splice(0, 60);
     this.heats.push({ x, y, r, t: 0 });
+  }
+
+  // the edges of a straight trench, glowing and cooling for `dur` seconds
+  heatLine(x0, y0, x1, y1, w, dur = 3.6) {
+    if (this.heatLines.length > 12) this.heatLines.shift();
+    this.heatLines.push({ x0, y0, x1, y1, w, t: 0, dur });
   }
 
   explosion(x, y, r) {
@@ -167,6 +174,8 @@ export class FX {
     this.flashes = this.flashes.filter(f => f.life > 0);
     for (const h of this.heats) h.t += dt;
     if (this.heats.length) this.heats = this.heats.filter(h => h.t < HEAT_TIME);
+    for (const h of this.heatLines) h.t += dt;
+    if (this.heatLines.length) this.heatLines = this.heatLines.filter(h => h.t < h.dur);
     for (const b of this.booms) b.t += dt;
     this.booms = this.booms.filter(b => b.t < b.max);
     for (const r of this.rings) r.t += dt;
@@ -183,6 +192,15 @@ export class FX {
   }
 
   drawBelow(g) { // hot rims on the page, then chunks, all behind the player
+    for (const pass of [0, 1]) for (const h of this.heatLines) {
+      const k = h.t / h.dur, hot = 1.05 * Math.pow(1 - k, 1.4), L = Math.hypot(h.x1 - h.x0, h.y1 - h.y0) || 1, nx = -(h.y1 - h.y0) / L, ny = (h.x1 - h.x0) / L;
+      g.globalCompositeOperation = pass ? 'lighter' : 'source-over'; g.globalAlpha = Math.min(1, hot) * (pass ? 0.8 : 0.6);
+      g.strokeStyle = heatColor(Math.min(0.999, k * 1.2)); g.lineWidth = pass ? 3 : 2;
+      g.beginPath();
+      for (const s of [-1, 1]) { g.moveTo(h.x0 + nx * s * (h.w + 0.5), h.y0 + ny * s * (h.w + 0.5)); g.lineTo(h.x1 + nx * s * (h.w + 0.5), h.y1 + ny * s * (h.w + 0.5)); }
+      g.stroke();
+    }
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
     if (this.heats.length) {
       // a solid colour pass so it shows on white pages, then additive bloom
       for (const pass of [0, 1]) {
