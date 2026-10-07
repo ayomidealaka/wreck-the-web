@@ -32,6 +32,18 @@
       <button data-url="ohentpay.com">Ohentpay</button>
       <button data-url="bbc.com">BBC</button>
     </div>
+    <div class="profile">
+      <div class="profile-who">
+        <input id="playerName" class="player-name" maxlength="24" spellcheck="false" aria-label="Your name">
+        <button id="nameReroll" class="icon-btn" type="button" aria-label="Pick a new random name" title="New random name">↻</button>
+        <button id="ranksBtn" class="btn small" type="button">All ranks</button>
+      </div>
+      <div id="standing" class="standing"></div>
+    </div>
+    <div class="daily">
+      <p class="daily-head"><span>Daily challenges</span><span class="muted" id="dailyEnds"></span></p>
+      <div id="dailyList" class="daily-list"></div>
+    </div>
     <div class="cast-wrap" id="castWrap" hidden>
       <div class="packs" id="packs" role="group" aria-label="Character style" hidden></div>
       <p class="cast-label">Your wrecker</p>
@@ -80,6 +92,7 @@
   <div class="menu-inner center results-card">
     <button class="results-close" data-act="continue" aria-label="Close and keep playing">&times;</button>
     <h2 class="results-title">Page destroyed</h2>
+    <div id="resultsXp" class="standing results-standing"></div>
     <dl id="resultsStats" class="results-stats"></dl>
     <div class="stack">
       <button class="btn primary" data-act="menu">Wreck another site</button>
@@ -87,6 +100,15 @@
       <button class="btn" data-act="clip">Save replay clip</button>
       <button class="btn" data-act="continue">Keep wrecking</button>
     </div>
+  </div>
+</section>
+
+<section id="ranks" class="screen dim" hidden>
+  <div class="menu-inner center ranks-card">
+    <button class="results-close" data-act="close" aria-label="Close">&times;</button>
+    <h2>Ranks</h2>
+    <p class="muted">Earn XP by knocking letters off, smashing things, destroying websites and finishing the daily challenges.</p>
+    <div id="ranksGrid" class="ranks-grid"></div>
   </div>
 </section>
 

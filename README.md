@@ -39,6 +39,16 @@ fire spreads across it, chars it and burns it away.
 proper run and jump cycles, hands solved onto each weapon's grips, recoil springs, a weapon swing-in, a shotgun pump
 and a grenade throw. Switch styles from the menu.
 
+## Progress
+
+No sign-up: the game gives you an anonymous id and a random name ("Wobbly Navbar", change it on the menu) and keeps
+everything in your browser. You earn XP for knocking letters off (one per ten), smashing things (five each),
+destroying a website (150) and finishing the daily challenges. XP buys twelve ranks, each with its own pixel-art medal,
+from Lurker to Web Wrecker; a new rank pops up in the game as you reach it. Three daily challenges, an easy, a medium
+and a hard one, are the same for everyone on a given day and are about destroying websites and the guns you use
+("Knock 300 letters off with the Uzi", "Destroy a website using only the Rocket Launcher", "Destroy a website in under
+4 minutes"). They change at midnight.
+
 ## How it works
 
 **Server** (`server/`). `snapshot.js` opens the site in headless Chrome, waits for its scripts, scrolls to wake

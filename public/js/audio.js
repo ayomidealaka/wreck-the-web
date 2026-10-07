@@ -338,6 +338,10 @@ export class Audio {
   // the rail laser: a rising whine while it charges, then a crack, a falling zap and a deep thump
   railCharge() { if (this.ok()) { this.osc({ type: 'sawtooth', f0: 220, f1: 1800, d: 0.38, peak: 0.12 }); this.osc({ type: 'sine', f0: 440, f1: 3200, d: 0.38, peak: 0.06 }); } }
   rail() { if (this.ok()) { this.noise_({ type: 'highpass', f0: 2400, f1: 500, d: 0.35, peak: 0.6 }); this.osc({ type: 'sawtooth', f0: 1800, f1: 60, d: 0.42, peak: 0.32 }); this.osc({ type: 'sine', f0: 95, f1: 30, d: 0.55, peak: 0.55 }); this.noise_({ type: 'lowpass', f0: 700, f1: 120, d: 0.3, peak: 0.45 }); } }
+  // a daily objective done: a bright two-note ding
+  challenge() { if (this.ok()) [784, 1175].forEach((f, i) => this.osc({ type: 'square', f0: f, f1: f, d: 0.12, peak: 0.08, t: i * 0.09, verb: 0.3 })); }
+  // a new rank: a rising fanfare and a shimmer
+  rankUp() { if (this.ok()) { [523, 659, 784, 1046, 1318].forEach((f, i) => this.osc({ type: 'square', f0: f, f1: f, d: 0.18, peak: 0.08, t: i * 0.09, verb: 0.35 })); this.osc({ type: 'triangle', f0: 2093, f1: 2637, d: 0.6, peak: 0.05, t: 0.45, verb: 0.5 }); } }
   // the .50 glancing off something hard: a short metallic whine
   ricochet() { if (this.ok()) { this.osc({ type: 'triangle', f0: 2600 + Math.random() * 600, f1: 900, d: 0.16, peak: 0.16 }); this.noise_({ type: 'highpass', f0: 5000, d: 0.03, peak: 0.1 }); } }
   paperHit() {

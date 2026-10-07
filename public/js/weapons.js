@@ -108,6 +108,8 @@ const WELL = { life: 3.4, collapse: 0.45, reach: 260, grow: 2.2, spin: 3.2 };
 // the pulsar, by the numbers
 const STAR = { radius: 42, form: 0.45, life: 4.2, collapse: 0.55, spin: 3, reach: 390, grow: 0.9 };
 const WPN = Object.fromEntries(WEAPONS.map(w => [w.id, w]));
+// the weapon a projectile counts for
+const SHOT_SRC = { rocket: 'rocket', warhead: 'nuke', shell40: 'launcher', mirv: 'mirv', bomblet: 'mirv', seed: 'star', well: 'well', grenade: 'grenade', bomb: 'airstrike' };
 
 // distance from a point to a segment
 function segDist(px, py, x0, y0, x1, y1) {
@@ -162,6 +164,8 @@ export class Arsenal {
     this.stars = []; this.chutes = []; this.burnT = 0;
     this.trails = []; this.strikes = []; this.mushrooms = []; this.popQ = []; this.clock = 0;
     this.stats = { letters: 0, shots: 0, booms: 0 };
+    // who gets the credit: the weapon behind whatever is happening now (see credit), and every weapon used this game
+    this.src = null; this.used = new Set(); this.onCredit = null;
   }
   get weapon() { return WEAPONS[this.index]; }
   // a weapon with a long reload (1.5s or more) that is still reloading: seconds left and how far along it is (0..1)
@@ -190,6 +194,7 @@ export class Arsenal {
     if (inp.weaponSlot != null && inp.weaponSlot < WEAPONS.length) this.select(inp.weaponSlot);
 
     const w = this.weapon, h = player.hand(), a = player.fireAim, dir = Math.cos(a) >= 0 ? 1 : -1;
+    this.src = w.id;
     const spread = s => a + (Math.random() - 0.5) * s;
     // rounds fly only as far as the cursor: what's on the way gets hit, and if a round reaches the cursor
     // over bare page it punches a little hole in the paper there (the .50 keeps going)
@@ -197,10 +202,10 @@ export class Arsenal {
     let flameOn = false, spinOn = false;
 
     if (inp.fire) {
-      if (w.id === 'flamer') { this.flamer(dt, h, a); flameOn = true; }
+      if (w.id === 'flamer') { this.flamer(dt, h, a); flameOn = true; this.used.add('flamer'); }
       else if (w.id === 'minigun') spinOn = true;
       if ((this.cools[w.id] ?? 0) <= 0 && !['flamer', 'drone'].includes(w.id)) {
-        this.cools[w.id] = w.cd; this.stats.shots++;
+        this.cools[w.id] = w.cd; this.stats.shots++; this.used.add(w.id);
         const back = (k, s = 1) => h.x - Math.cos(a) * k * s;
         // where spent casings come out: the gun's ejection port when the character can tell us, else a little behind the muzzle
         const port = (k) => player.port?.() || { x: back(k), y: h.y - Math.sin(a) * k };
@@ -294,7 +299,7 @@ export class Arsenal {
     audio.drone(!!this.drone && !this.drone.leaving);
 
     this.strikeCool -= dt;
-    if (inp.strike && this.strikeCool <= 0) { this.strikeCool = STRIKE.cd; this.callStrike(inp.aimX ?? h.x + Math.cos(a) * 300, inp.aimY ?? h.y + Math.sin(a) * 300); }
+    if (inp.strike && this.strikeCool <= 0) { this.strikeCool = STRIKE.cd; this.used.add('airstrike'); this.callStrike(inp.aimX ?? h.x + Math.cos(a) * 300, inp.aimY ?? h.y + Math.sin(a) * 300); }
     this.aimPt = { x: inp.aimX ?? h.x + Math.cos(a) * 300, y: inp.aimY ?? h.y + Math.sin(a) * 300 };
     // gravity well, right button held: grab debris; let go to throw it (G / Q still throw grenades)
     const grabbing = w.id === 'well' && inp.alt;
@@ -305,6 +310,7 @@ export class Arsenal {
     if (this.throwIn != null && (this.throwIn -= dt) <= 0) {
       this.throwIn = null;
       const q = player.throwPoint ? player.throwPoint() : h, ta = player.fireAim;
+      this.used.add('grenade');
       this.shots.push({ kind: 'grenade', x: q.x, y: q.y, vx: Math.cos(ta) * 620 + player.vx * 0.5, vy: Math.sin(ta) * 620 - 140 + player.vy * 0.3, life: 1.8, spin: 0 });
       audio.throw();
     }
@@ -329,6 +335,7 @@ export class Arsenal {
     this.fire.update(dt);
     if ((this.burnT += dt) > 0.25) {
       this.burnT = 0;
+      this.src = 'fire';
       for (const [el, d] of this.fire.damage) { const e = this.game.level.elements[el]; if (e?.alive) this.hurtElement(el, d * 1.3, e.x + e.w / 2, e.y + e.h / 2, 0, -1); }
       this.fire.damage.clear();
     }
@@ -401,7 +408,7 @@ export class Arsenal {
 
   bullet(h, a, speed, style, dmg, extra = {}) {
     this.shots.push({ kind: 'bullet', style, x: h.x, y: h.y, x0: h.x, y0: h.y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, a,
-      r: dmg.r, pen: dmg.pen, splash: dmg.splash, hitDmg: dmg.hit ?? 1, hits: 0, life: 1.2, t: 0, ...extra });
+      r: dmg.r, pen: dmg.pen, splash: dmg.splash, hitDmg: dmg.hit ?? 1, hits: 0, life: 1.2, t: 0, src: this.src, ...extra });
   }
   // shotgun at contact range: the whole charge tears a cone out before it spreads
   pointBlank(h, a, range, cone) {
@@ -418,13 +425,13 @@ export class Arsenal {
     }
   }
   // letters knocked off in a moment's time (shockwaves travel outwards; big blasts spread the work over frames)
-  queuePop(id, delay, vx, vy, burnt = false) { this.popQ.push({ id, at: this.clock + delay, vx, vy, burnt }); this.popQSorted = false; }
+  queuePop(id, delay, vx, vy, burnt = false) { this.popQ.push({ id, at: this.clock + delay, vx, vy, burnt, src: this.src }); this.popQSorted = false; }
   updatePops() {
     if (!this.popQ.length) return;
     if (!this.popQSorted) { this.popQ.sort((p, q) => p.at - q.at); this.popQSorted = true; }
     let n = 0;
     while (n < this.popQ.length && n < 90 && this.popQ[n].at <= this.clock) n++;
-    for (const p of this.popQ.splice(0, n)) this.popLetter(p.id, p.vx, p.vy, p.burnt);
+    for (const p of this.popQ.splice(0, n)) { this.src = p.src; this.popLetter(p.id, p.vx, p.vy, p.burnt); }
   }
 
   // marches a segment through the grid; returns the first point that hits real content
@@ -437,11 +444,13 @@ export class Arsenal {
     return null;
   }
 
+  // the weapon behind what is happening now gets the credit for it (letters knocked off, things smashed)
+  credit(kind, n = 1) { if (n > 0) this.onCredit?.(kind, this.src || 'other', n); }
   popLetter(id, vx, vy, burnt = false) {
     const { level, fx, backdrop, audio } = this.game;
     const piece = level.detachLetter(id);
     if (!piece) return null;
-    this.stats.letters++;
+    this.stats.letters++; this.credit('letters');
     this.burning.delete(id);
     if (!piece.patched) backdrop.reveal(piece.y - piece.h, piece.y + piece.h);
     if (!piece.sprite) { audio.pop(); return piece; }                       // an empty letter box: nothing to throw
@@ -479,6 +488,7 @@ export class Arsenal {
     if (!piece) return;
     this.launchPiece(piece, hx, hy);
     this.stats.elements = (this.stats.elements || 0) + 1 + piece.elements; this.stats.letters += piece.letters;
+    this.credit('elements', 1 + piece.elements); this.credit('letters', piece.letters);
   }
   // It falls off the page as one piece, the text on it included: pushed away from the blow, big things slowly (a
   // big panel drops, a small icon gets flung), with dust off its edges. Shoot it while it falls and it shatters.
@@ -487,6 +497,7 @@ export class Arsenal {
     if (!piece) return;
     this.launchPiece(piece, hx, hy);
     this.stats.elements = (this.stats.elements || 0) + 1; this.stats.letters += piece.letters;
+    this.credit('elements'); this.credit('letters', piece.letters);
   }
   launchPiece(piece, hx, hy) {
     const { fx, backdrop, audio, level } = this.game;
@@ -854,6 +865,7 @@ export class Arsenal {
     fx.flash = Math.max(fx.flash, 0.25);
   }
   updateStars(dt) {
+    this.src = 'star';
     const { level, fx, audio, player } = this.game, S = STAR;
     for (const st of this.stars) {
       const was = st.t; st.t += dt;
@@ -924,6 +936,7 @@ export class Arsenal {
     if (Math.random() < 0.5) fx.muzzle(h.x, h.y, a, 'star', '#FFB238', 0.5);
   }
   updateFlames(dt) {
+    this.src = 'flamer';
     const { level, fx } = this.game;
     for (const f of this.flames) {
       f.life -= dt; f.vx *= 1 - 2.6 * dt; f.vy = f.vy * (1 - 2.6 * dt) - 60 * dt; f.size += 22 * dt;
@@ -945,7 +958,7 @@ export class Arsenal {
   ignite(id) {
     const L = this.game.level.letters[id];
     if (!L || !L.alive || this.burning.has(id) || this.burning.size > 500) return;
-    this.burning.set(id, { t: 0.7 + Math.random() * 0.8, spread: 0.12 + Math.random() * 0.2 });
+    this.burning.set(id, { t: 0.7 + Math.random() * 0.8, spread: 0.12 + Math.random() * 0.2, src: this.src });
   }
   updateBurning(dt) {
     if (!this.burning.size) return;
@@ -953,6 +966,7 @@ export class Arsenal {
     for (const [id, b] of this.burning) {
       const L = level.letters[id];
       if (!L?.alive) { this.burning.delete(id); continue; }
+      this.src = b.src || 'flamer';
       b.t -= dt; b.spread -= dt;
       if (this.fire && Math.random() < 0.5) this.fire.heatAt(L.x + Math.random() * L.w, L.y + L.h, 0.12, 4);
       if (Math.random() < 0.5) fx.spark(L.x + Math.random() * L.w, L.y + L.h * 0.3 + Math.random() * L.h * 0.5, (Math.random() - 0.5) * 20, -60 - Math.random() * 60, FLAME_COLS[(Math.random() * 4) | 0], 2 + (Math.random() * 2 | 0), 0.35, { glow: true, grav: -0.15 });
@@ -1008,7 +1022,7 @@ export class Arsenal {
     if (inp.fire && d.cool <= 0) {
       d.cool = WEAPONS.find(w => w.id === 'drone').cd;
       const t2 = this.droneTip(), an = d.aim + (Math.random() - 0.5) * 0.08;
-      this.bullet(t2, an, 1700, 'drone', WPN.drone.dmg, { range: Math.max(24, Math.hypot(inp.aimX - t2.x, inp.aimY - t2.y)) }); audio.droneShot(); this.stats.shots++;
+      this.bullet(t2, an, 1700, 'drone', WPN.drone.dmg, { range: Math.max(24, Math.hypot(inp.aimX - t2.x, inp.aimY - t2.y)) }); audio.droneShot(); this.stats.shots++; this.used.add('drone');
       fx.muzzle(t2.x, t2.y, d.aim, 'star', '#FF9A6A', 0.7);
       if (Math.random() < 0.5) fx.casing(t2.x - Math.cos(d.aim) * 6, t2.y, d.face, '#D9A63A', 2);
     }
@@ -1042,6 +1056,7 @@ export class Arsenal {
   // elements and punches through anything weak, a few times each, before it drops.
   updateGrab(dt, inp, grabbing, h, a) {
     const { fx, level, audio, player } = this.game, G = this.grab ||= { held: [], t: 0 };
+    this.src = 'well'; if (grabbing) this.used.add('well');
     const hold = { x: h.x + Math.cos(a) * 34, y: h.y + Math.sin(a) * 34 };
     G.held = G.held.filter(c => c.life > 0 && fx.chunks.includes(c));
     if (grabbing) {
@@ -1112,6 +1127,7 @@ export class Arsenal {
   get strikeReady() { return Math.max(0, this.strikeCool); }
   updateStrikes(dt) {
     if (!this.strikes.length) return;
+    this.src = 'airstrike';
     const { audio, cam } = this.game;
     for (const s of this.strikes) {
       s.t += dt;
@@ -1141,7 +1157,7 @@ export class Arsenal {
     this.stats.booms++;
     for (const id of level.lettersInRadius(x, y, wave)) {
       const L = level.letters[id], dx = L.x + L.w / 2 - x, dy = L.y + L.h / 2 - y, d = Math.hypot(dx, dy) || 1;
-      if (d < R * 0.9) { if (level.killLetter(id)) this.stats.letters++; continue; }
+      if (d < R * 0.9) { if (level.killLetter(id)) { this.stats.letters++; this.credit('letters'); } continue; }
       const k = 1700 * (1 - d / wave) + 260;
       this.queuePop(id, d / 1100, dx / d * k * (0.7 + Math.random() * 0.5), dy / d * k * 0.8 - 300 - Math.random() * 300, d < R * 1.7);
     }
@@ -1190,6 +1206,7 @@ export class Arsenal {
   updateShots(dt) {
     const { level, fx, player, audio } = this.game;
     for (const s of this.shots) {
+      this.src = s.src ?? SHOT_SRC[s.kind] ?? this.src;
       s.life -= dt; s.t = (s.t || 0) + dt;
       if (s.kind === 'bullet') {
         let nx = s.x + s.vx * dt, ny = s.y + s.vy * dt, ends = false;

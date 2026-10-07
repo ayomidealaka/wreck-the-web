@@ -9,10 +9,13 @@ import { ClipRecorder } from './recorder.js';
 import { loadPacks, loadManifest, CastCharacter } from './cast.js';
 import { RigCharacter } from './rig.js';
 import { drawCrosshair } from './crosshair.js';
+import { Progress, randomName } from './progress.js';
+import { RANKS, badgeCanvas } from './badges.js';
 
 const $ = s => document.querySelector(s);
 const canvas = $('#game'), g = canvas.getContext('2d');
 const audio = new Audio();
+const progress = new Progress();   // XP, rank and the daily objectives, kept in this browser
 const input = new Input(canvas, $('#touch'));
 const PIXEL = "'Silkscreen', ui-monospace, Menlo, monospace";
 const MILESTONES = [0.1, 0.25, 0.5, 0.75];
@@ -39,7 +42,7 @@ addEventListener('resize', resize); resize();
 
 // ------------------------------------------------------------------ UI
 const screens = { menu: $('#menu'), loading: $('#loading'), pause: $('#pause'), results: $('#results') };
-function show(name) { for (const [k, el] of Object.entries(screens)) el.hidden = k !== name; }
+function show(name) { for (const [k, el] of Object.entries(screens)) el.hidden = k !== name; if (name === 'menu') renderProfile(); }
 let toastTimer;
 function toast(html, ms = 3500) {
   const t = $('#toast'); t.innerHTML = html; t.hidden = false;
@@ -197,6 +200,49 @@ let castReady = (async () => {
   await loadCast(first);
 })();
 
+// ------------------------------------------------------------------ profile, ranks, daily objectives (menu)
+const fmtLeft = ms => { const m = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h ? `${h}h ${m % 60}m` : `${m}m`; };
+// a medal, the rank's name, an XP bar and a line under it, into `el`
+function renderStanding(el, line) {
+  if (!el) return;
+  const st = progress.standing(), b = badgeCanvas(st.rank, 2);
+  const toNext = st.next === null ? 'Top rank' : `${(st.next - st.xp).toLocaleString()} XP to ${RANKS[st.rank + 1].name}`;
+  el.replaceChildren();
+  const pic = document.createElement('canvas'); pic.width = b.width; pic.height = b.height; pic.getContext('2d').drawImage(b, 0, 0); pic.className = 'badge';
+  const main = document.createElement('div'); main.className = 'standing-main';
+  main.innerHTML = `<p class="standing-rank">${st.name} <span class="muted">· ${st.xp.toLocaleString()} XP</span></p>
+    <div class="xp-bar"><i style="width:${st.next === null ? 100 : (100 * st.into / st.span).toFixed(1)}%"></i></div>
+    <p class="muted standing-line">${line ? `${line} · ` : ''}${toNext}</p>`;
+  el.append(pic, main);
+}
+function renderProfile() {
+  progress.refreshDaily();
+  renderStanding($('#standing'));
+  const name = $('#playerName'); if (document.activeElement !== name) name.value = progress.name;
+  $('#dailyEnds').textContent = `New in ${fmtLeft(progress.dailyEnds - Date.now())}`;
+  $('#dailyList').replaceChildren(...progress.daily.list.map(o => {
+    const row = document.createElement('div'); row.className = o.done ? 'daily-row done' : 'daily-row';
+    row.innerHTML = `<p class="daily-what">${o.done ? '✓ ' : ''}${o.text}${o.note ? `<span class="muted"> (${o.note})</span>` : ''}</p>
+      <div class="xp-bar daily-bar"><i style="width:${(100 * Math.min(o.progress, o.n) / o.n).toFixed(1)}%"></i></div>
+      <p class="daily-meta"><span class="muted">${o.done ? 'Done' : o.n > 1 ? `${Math.min(o.progress, o.n).toLocaleString()} / ${o.n.toLocaleString()}` : ''}</span><span class="daily-xp">+${o.xp} XP</span></p>`;
+    return row;
+  }));
+}
+function renderRanks() {
+  const st = progress.standing();
+  $('#ranksGrid').replaceChildren(...RANKS.map((r, i) => {
+    const card = document.createElement('div'); card.className = `rank-card${i <= st.rank ? '' : ' locked'}${i === st.rank ? ' current' : ''}`;
+    const b = badgeCanvas(i, 2), pic = document.createElement('canvas'); pic.width = b.width; pic.height = b.height; pic.getContext('2d').drawImage(b, 0, 0);
+    card.append(pic, Object.assign(document.createElement('p'), { textContent: r.name }), Object.assign(document.createElement('p'), { className: 'muted', textContent: `${r.xp.toLocaleString()} XP` }));
+    return card;
+  }));
+}
+$('#playerName').addEventListener('change', e => { progress.setName(e.target.value); e.target.value = progress.name; });
+$('#nameReroll').addEventListener('click', () => { progress.setName(randomName()); $('#playerName').value = progress.name; });
+$('#ranksBtn').addEventListener('click', () => { renderRanks(); $('#ranks').hidden = false; });
+$('#ranks').addEventListener('click', e => { if (e.target.closest('[data-act="close"]') || e.target.id === 'ranks') $('#ranks').hidden = true; });
+setInterval(() => { if (!screens.menu.hidden) $('#dailyEnds').textContent = `New in ${fmtLeft(progress.dailyEnds - Date.now())}`; }, 30000);
+
 let strikeBtn = null; // touch airstrike button (dimmed while the strike recharges)
 // ------------------------------------------------------------------ game
 const STEP = 1 / 60;
@@ -231,6 +277,8 @@ class Game {
     this.player.sprite = cast.get(chosenId) || null;
     if (!this.player.sprite) chosenReady().then(c => { if (c && game === this) this.player.sprite = c; }); // art still on its way
     this.arsenal = new Arsenal(this);
+    this.arsenal.onCredit = (kind, src, n) => this.reward(kind === 'letters' ? progress.letters(src, n) : progress.elements(src, n));
+    this.runXp = 0; this.xpPop = null; this.notes = []; this.medals = [];   // XP this game, the +XP flash, challenge banners, rank-ups to show
     this.cam = { x: 0, y: -200, w: innerWidth, h: innerHeight, zoom: 1, sx: 0, sy: 0 };
     this.t = 0; this.paused = false; this.hit = MILESTONES.map(() => false); this.banner = null;
     this.progress = 0; this.seen = null; this.progT = 0; this.ending = null;
@@ -319,7 +367,11 @@ class Game {
     if ((this.progT -= realDt) > 0) return;
     this.progT = 0.25;
     this.progress = this.destruction();
-    if (!this.ending && this.progress >= WIN_AT) this.ending = { t: 0, blasts: 0 };
+    if (!this.ending && this.progress >= WIN_AT) {
+      this.ending = { t: 0, blasts: 0 };
+      const site = (() => { try { return new URL(this.meta.url).hostname.replace(/^www\./, ''); } catch { return this.meta.url; } })();
+      this.reward(progress.destroyed({ site, seconds: this.t, used: this.arsenal.used }));
+    }
   }
   // the ending: the game never stops. A "PAGE DESTROYED" banner, then the results float over the page
   // while you keep playing; close them (x or Keep wrecking) and carry on with the same page.
@@ -327,7 +379,15 @@ class Game {
     const E = this.ending; if (!E || E.done) return;
     E.t += realDt;
     if (E.t === realDt) { this.banner = { text: 'PAGE DESTROYED', t: 0 }; audio.milestone(); }
-    if (E.t > 0.9) { E.done = true; this.showResults(); }
+    if (E.t > 0.9 && !(this.medals.length && this.medals[0].t < 2)) { E.done = true; this.showResults(); }   // once a rank-up medal has had its moment
+  }
+  // XP and what it brought: the +XP flash, a banner per finished objective, a medal per rank passed
+  reward(r) {
+    if (!r) return;
+    if (r.xp > 0) { this.runXp += r.xp; this.xpPop = { n: (this.xpPop && this.xpPop.t < 1 ? this.xpPop.n : 0) + r.xp, t: 0 }; }
+    for (const o of r.done) { this.notes.push({ o, t: 0 }); audio.challenge(); }
+    // several ranks at once: show just the one landed on (and drop any not yet shown that it passes)
+    if (r.ups.length) { this.medals = this.medals.filter(m => m.t > 0); this.medals.push({ rank: r.ups[r.ups.length - 1], t: 0 }); }
   }
   showResults() {
     const s = this.arsenal.stats, mins = Math.floor(this.t / 60), secs = Math.floor(this.t % 60);
@@ -336,6 +396,7 @@ class Game {
       ['Of the page gone', `${Math.round(this.level.destroyed * 100)}%`],
       ['Letters knocked off', s.letters], ['Things smashed', s.elements || 0], ['Explosions', s.booms], ['Shots fired', s.shots],
     ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+    renderStanding($('#resultsXp'), `+${this.runXp.toLocaleString()} XP this game`);
     show('results');
   }
   // tips checklist: tick each off the first time it happens
@@ -383,6 +444,9 @@ class Game {
     this.tickTips(inp);
     this.updateEnding(realDt);
     if (this.banner) { this.banner.t += dt; if (this.banner.t > 2.2) this.banner = null; }
+    if (this.xpPop && (this.xpPop.t += realDt) > 1.6) this.xpPop = null;
+    if (this.notes.length && (this.notes[0].t += realDt) > (this.notes.length > 1 ? 2.4 : 3.6)) this.notes.shift();
+    if (this.medals.length) { const m = this.medals[0]; if (!m.t) audio.rankUp(); if ((m.t += realDt) > 3.4) this.medals.shift(); }
   }
 
   updateCamera(dt) {
@@ -481,10 +545,14 @@ class Game {
     for (let i = 0; i < segs; i++) if (i / segs < d) { g.fillStyle = i / segs < 0.5 ? '#FF9A2E' : '#FF5A4E'; g.fillRect(bx + i * bw / segs + 1, by + 19, bw / segs - 2, 8); }
     if (!small) {
       g.font = `700 11px ${PIXEL}`;
-      const tw = Math.max(g.measureText(this.title).width, 150);
-      panel(6, 6, Math.min(tw + 18, bx - 24), 42);
-      text(this.title, 14, 14, 11, '#F4EFFA');
-      text(`${this.arsenal.stats.letters} letters knocked off`, 14, 30, 10, '#A79DB8');
+      const tw = Math.max(g.measureText(this.title).width, 170), pw = Math.min(tw + 62, bx - 24), st = progress.standing();
+      panel(6, 6, pw, 52);
+      g.imageSmoothingEnabled = false; g.drawImage(badgeCanvas(st.rank, 1), 11, 15, 32, 32);
+      text(this.title, 50, 12, 11, '#F4EFFA');
+      text(`${st.name.toUpperCase()} · ${this.arsenal.stats.letters} LETTERS`, 50, 28, 9, '#A79DB8');
+      const xbw = pw - 52; g.fillStyle = '#3A2E52'; g.fillRect(50, 43, xbw, 4);
+      g.fillStyle = '#FFD25A'; g.fillRect(50, 43, st.next === null ? xbw : xbw * st.into / st.span, 4);
+      if (this.xpPop) { const a = Math.min(1, (1.6 - this.xpPop.t) / 0.4); g.globalAlpha = a; text(`+${this.xpPop.n} XP`, 6 + pw + 8, 26 - this.xpPop.t * 6, 11, '#FFD25A'); g.globalAlpha = 1; }
     }
     // weapon bar geometry: as many slots per row as fit (one row on desktop; on phones one compact row of small
     // slots at the top, so the tips panel can sit under it instead of on top of it)
@@ -496,7 +564,7 @@ class Game {
     // tips checklist (left side), until everything has been done once
     { const T = this.tips, all = T.allT >= 0;
       if (!(all && this.t - T.allT > 2) && !this.ending) {
-        const x0 = 6, y0 = input.touch ? wy0 + rowsN * rowStep + 4 : small ? 60 : 56, rowH = small ? 15 : 17, w = small ? 168 : 210;
+        const x0 = 6, y0 = input.touch ? wy0 + rowsN * rowStep + 4 : small ? 60 : 66, rowH = small ? 15 : 17, w = small ? 168 : 210;
         g.globalAlpha = all ? Math.max(0, 1 - (this.t - T.allT - 1.2) / 0.8) : 1;
         panel(x0, y0, w, 24 + TIPS.length * rowH);
         text(all ? 'ALL SET. GO WRECK IT' : 'TRY THESE', x0 + 10, y0 + 8, small ? 8 : 9, all ? '#3DFF7A' : '#FFD25A');
@@ -559,6 +627,33 @@ class Game {
       const t = this.banner.t, a = t < 0.2 ? t / 0.2 : t > 1.8 ? (2.2 - t) / 0.4 : 1, s = 1 + Math.max(0, 0.25 - t) * 1.2;
       g.globalAlpha = a; g.save(); g.translate(W / 2, H * 0.3); g.scale(s, s);
       text(this.banner.text, 0, 0, small ? 22 : 34, '#FFD25A', 'center'); g.restore(); g.globalAlpha = 1;
+    }
+    // a finished daily objective: a banner under the meter
+    if (this.notes.length) {
+      const { o, t } = this.notes[0], a = Math.min(1, t / 0.25, (3.6 - t) / 0.4), y = (small ? 70 : 72) + (1 - Math.min(1, t / 0.25)) * -20;
+      g.font = `700 11px ${PIXEL}`; const line = o.text.toUpperCase(), lw = Math.max(g.measureText(line).width, 200) + 40;
+      g.globalAlpha = a; panel(W / 2 - lw / 2, y, lw, 46);
+      g.fillStyle = '#3DFF7A'; g.fillRect(W / 2 - lw / 2, y, 4, 46);
+      text('DAILY CHALLENGE DONE', W / 2, y + 8, 10, '#3DFF7A', 'center');
+      text(`${line}  +${o.xp} XP`, W / 2, y + 24, 11, '#F4EFFA', 'center');
+      g.globalAlpha = 1;
+    }
+    // a new rank: the medal pops in over light rays, the rank's name under it
+    if (this.medals.length) {
+      const { rank, t } = this.medals[0], a = Math.min(1, t / 0.2, (3.4 - t) / 0.4), pop = t < 0.35 ? 0.4 + (t / 0.35) * 0.75 : 1.15 - Math.min(0.15, (t - 0.35) * 0.6);
+      const cx = W / 2, cy = H * 0.42, S = small ? 4 : 5, pw = 32 * S + 150, ph = 32 * S + 120;
+      g.save(); g.globalAlpha = a * 0.92; g.fillStyle = 'rgba(14,11,22,0.88)'; g.beginPath(); g.roundRect(cx - pw / 2, cy - ph / 2 - 6, pw, ph, 16); g.fill();
+      g.strokeStyle = '#FFD25A'; g.lineWidth = 2; g.stroke(); g.restore();
+      g.save(); g.globalAlpha = a; g.beginPath(); g.roundRect(cx - pw / 2, cy - ph / 2 - 6, pw, ph, 16); g.clip(); g.translate(cx, cy);
+      g.rotate(t * 0.6); g.fillStyle = 'rgba(255,210,90,0.14)';
+      for (let i = 0; i < 12; i++) { g.rotate(Math.PI / 6); g.beginPath(); g.moveTo(0, 0); g.lineTo(-18, -190); g.lineTo(18, -190); g.closePath(); g.fill(); }
+      g.restore();
+      g.save(); g.globalAlpha = a; g.translate(cx, cy); g.scale(pop, pop); g.imageSmoothingEnabled = false;
+      const b = badgeCanvas(rank, S); g.drawImage(b, -b.width / 2, -b.height / 2 - 10); g.restore();
+      g.globalAlpha = a;
+      text('RANK UP', cx, cy - ph / 2 + 6, 13, '#FFD25A', 'center');
+      text(RANKS[rank].name.toUpperCase(), cx, cy + 16 * S - 6, small ? 22 : 28, '#F4EFFA', 'center');
+      g.globalAlpha = 1;
     }
     // crosshair (on touch: at the aim point while the stick is held, so you see where the rounds stop)
     const touchAim = input.touch && input.stickR.active && this.arsenal.aimPt;

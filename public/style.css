@@ -115,3 +115,46 @@ h2 { font-family: var(--pixel); font-size: 34px; margin: 0 0 6px; }
 .results-stats { display: grid; grid-template-columns: auto auto; gap: 6px 22px; margin: 0 0 22px; font-size: 13px; }
 .results-stats dt { color: var(--muted); text-align: right; }
 .results-stats dd { margin: 0; color: var(--gold); text-align: left; }
+
+/* profile: name, rank medal, XP */
+.profile { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 0 0 14px; }
+.profile-who { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.player-name { flex: 1; min-width: 0; background: none; border: 0; border-bottom: 1px dashed transparent; color: var(--ink); font: 700 16px/1.3 var(--pixel); padding: 2px 0; outline: none; }
+.player-name:hover, .player-name:focus { border-bottom-color: var(--line); }
+.icon-btn { background: none; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.icon-btn:hover { color: var(--ink); background: var(--line); }
+.btn.small { font-size: 12px; padding: 7px 11px; }
+.standing { display: flex; align-items: center; gap: 12px; text-align: left; }
+.standing .badge { width: 64px; height: 64px; image-rendering: pixelated; flex-shrink: 0; }
+.standing-main { flex: 1; min-width: 0; }
+.standing-rank { margin: 0 0 6px; font-size: 15px; font-weight: 700; }
+.standing-line { margin: 6px 0 0; font-size: 12px; }
+.muted { color: var(--muted); }
+.xp-bar { height: 8px; background: #2A2140; border-radius: 4px; overflow: hidden; }
+.xp-bar i { display: block; height: 100%; background: linear-gradient(90deg, #FFB238, var(--gold)); border-radius: 4px; }
+.results-standing { margin: 0 0 18px; padding: 10px 12px; background: rgb(255 255 255 / 0.04); border-radius: 10px; }
+
+/* daily challenges */
+.daily { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 0 0 22px; }
+.daily-head { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 10px; font-weight: 700; font-size: 14px; }
+.daily-head .muted { font-weight: 400; font-size: 12px; }
+.daily-list { display: flex; flex-direction: column; gap: 12px; }
+.daily-what { margin: 0 0 5px; font-size: 13px; line-height: 1.45; }
+.daily-what .muted { font-size: 11px; }
+.daily-bar { height: 6px; }
+.daily-meta { display: flex; justify-content: space-between; margin: 4px 0 0; font-size: 11px; }
+.daily-xp { color: var(--gold); }
+.daily-row.done .daily-what { color: #3DFF7A; }
+.daily-row.done .xp-bar i { background: #3DFF7A; }
+
+/* all ranks */
+.ranks-card { position: relative; background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 26px 18px 20px; width: min(700px, 100%); }
+.ranks-card h2 { margin: 0 0 6px; }
+.ranks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 12px; margin-top: 18px; }
+.rank-card { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; border-radius: 10px; background: rgb(255 255 255 / 0.03); }
+.rank-card canvas { width: 64px; height: 64px; image-rendering: pixelated; }
+.rank-card p { margin: 0; font-size: 12px; }
+.rank-card .muted { font-size: 11px; }
+.rank-card.locked canvas { filter: grayscale(1) brightness(0.45); }
+.rank-card.locked p:not(.muted) { color: var(--muted); }
+.rank-card.current { outline: 2px solid var(--gold); background: rgb(255 210 90 / 0.08); }
