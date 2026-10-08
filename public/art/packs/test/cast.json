@@ -1,3 +1,7 @@
 [
-  { "id": "r1", "name": "Ash", "rig": "rig/rig.json", "height": 76, "weapons": "weapons/" }
+  {"id": "r1", "name": "Ash", "rig": "rig/rig.json", "height": 76, "weapons": "weapons/"},
+  {"id": "r2", "name": "Raven", "rig": "chars/r2/rig/rig.json", "height": 74.1, "weapons": "weapons/"},
+  {"id": "r3", "name": "Doc", "rig": "chars/r3/rig/rig.json", "height": 73.3, "weapons": "weapons/"},
+  {"id": "r4", "name": "Kane", "rig": "chars/r4/rig/rig.json", "height": 76, "weapons": "weapons/"},
+  {"id": "r5", "name": "Jett", "rig": "chars/r5/rig/rig.json", "height": 77.2, "weapons": "weapons/"}
 ]

@@ -9,6 +9,7 @@
 public/art/ref/
 public/art/candidates/
 public/art/packs/*/src/
+public/art/packs/*/chars/*/src/
 public/characters.html
 public/cast-preview.html
 public/js/gallery.js
