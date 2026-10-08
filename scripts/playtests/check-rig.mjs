@@ -1,17 +1,18 @@
 // Contact sheet for a rigged character: rows = poses (idle / run phases / air), columns = weapons at several aims.
-// usage: node scripts/playtests/check-rig.mjs out.png [pack]   (WEAPONS=ak47,uzi,rocket ANG=-50,0,40)
+// usage: node scripts/playtests/check-rig.mjs out.png [pack] [character id]   (WEAPONS=ak47,uzi,rocket ANG=-50,0,40
+// BASE=http://localhost:4600)
 import puppeteer from 'puppeteer-core';
 import fs from 'node:fs';
-const [OUT, PACK = 'test'] = process.argv.slice(2);
+const [OUT, PACK = 'test', ID] = process.argv.slice(2), BASE = process.env.BASE || 'http://localhost:4600';
 const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true });
 const p = await b.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
-await p.goto('http://localhost:4600/cast-preview.html', { waitUntil: 'domcontentloaded' });
-const url = await p.evaluate(async ([PACK, WS, ANGS]) => {
+await p.goto(`${BASE}/cast-preview.html`, { waitUntil: 'domcontentloaded' });
+const url = await p.evaluate(async ([PACK, ID, WS, ANGS]) => {
   const { loadPacks, loadManifest } = await import('/js/cast.js');
   const { RigCharacter } = await import('/js/rig.js');
   const { WEAPONS, loadWeaponArt } = await import('/js/weapons.js');
   await loadWeaponArt();
-  const pack = (await loadPacks()).find(x => x.id === PACK), def = (await loadManifest(pack))[0];
+  const pack = (await loadPacks()).find(x => x.id === PACK), list = await loadManifest(pack), def = list.find(d => d.id === ID) || list[0];
   const c = await new RigCharacter(def).load();
   const ws = [null, ...WS.map(id => WEAPONS.find(w => w.id === id))];
   const states = [
@@ -32,6 +33,6 @@ const url = await p.evaluate(async ([PACK, WS, ANGS]) => {
   }));
   g.font = '7px sans-serif'; g.fillStyle = '#222'; states.forEach((s, r) => g.fillText(s.name, 2, r * CH + 10));
   return cv.toDataURL();
-}, [PACK, (process.env.WEAPONS || 'ak47,uzi,rocket').split(','), (process.env.ANG || '-50,0,40').split(',').map(Number)]);
+}, [PACK, ID, (process.env.WEAPONS || 'ak47,uzi,rocket').split(','), (process.env.ANG || '-50,0,40').split(',').map(Number)]);
 fs.writeFileSync(OUT, Buffer.from(url.split(',')[1], 'base64'));
 console.log('errors:', errs.join(' | ') || 'none'); await b.close();

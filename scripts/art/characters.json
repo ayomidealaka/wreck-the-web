@@ -1,0 +1,14 @@
+{
+  "_": "Characters drawn in Ash's style (public/art/packs/test). Each is made by editing Ash's own base drawing, so pose, proportions and pixel style carry over, with a cut-out of the character from public/art/ref/chars/ (not in the repo) as the reference. See scripts/art/gen-char.mjs.",
+  "same": "Keep exactly the same side-on pose facing right, the same body proportions, height and pixel art style: standing upright, arms hanging relaxed at the sides, empty hands, no weapon, no backpack, transparent background.",
+  "characters": [
+    { "id": "r2", "name": "Raven", "ref": "ref_ponytail.png",
+      "look": "a woman with long dark brown hair in a high ponytail, a black face mask over her mouth and nose, a black crop top showing her midriff, black fingerless gloves and wrist guards, baggy olive green cargo trousers and black combat boots" },
+    { "id": "r3", "name": "Doc", "ref": "ref_medic.png",
+      "look": "a woman with brown hair tied up in a bun and round glasses, a white cropped jacket over a black top, a small white first-aid pouch with a red cross on her hip, black jogger trousers with pockets and white trainers" },
+    { "id": "r4", "name": "Kane", "ref": "ref_agent.png",
+      "look": "a man with short dark curly hair, black sunglasses and light stubble, a black suit jacket, white shirt and black tie, black suit trousers and black shoes" },
+    { "id": "r5", "name": "Jett", "ref": "ref_puffer.png",
+      "look": "a man with spiky black hair and a black face mask, a bright red puffer jacket, black cargo trousers and red and white trainers" }
+  ]
+}

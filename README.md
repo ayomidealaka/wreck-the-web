@@ -45,10 +45,10 @@ forms a star whose two jets sweep a widening disc out of the page before it coll
 radial cracks. Every blast leaves a ring of fire round its crater, and the flamethrower sets the page itself alight:
 fire spreads across it, chars it and burns it away.
 
-**Character:** Ash, a rigged character whose arms, legs and head are posed every frame: proper run and jump cycles,
-hands solved onto each weapon's grips, recoil springs, a weapon swing-in, a shotgun pump and a grenade throw. He has
-his own art for every weapon, the jetpack, the drone and the airstrike. (The original classic pixel cast is still in
-`public/art/` but switched off.)
+**Characters:** Ash, Raven, Doc, Kane and Jett, picked on the menu. They're rigged characters whose arms, legs and
+heads are posed every frame: proper run and jump cycles, hands solved onto each weapon's grips, recoil springs, a
+weapon swing-in, a shotgun pump and a grenade throw. They share one art style, with its own art for every weapon, the
+jetpack, the drone and the airstrike. (The original classic pixel cast is still in `public/art/` but switched off.)
 
 ## Progress
 
@@ -134,6 +134,19 @@ node scripts/playtests/profile-nuke.mjs                 # frame times and hot fu
 The sprites were generated with [PixelLab](https://www.pixellab.ai) and cut up by the scripts in `scripts/art/`,
 which read the API key from `.env` (see `.env.example`). The reference sprite sheets used to measure the run and
 jump cycles are not part of the repository.
+
+New characters in Ash's style are made from his own drawing, so they match him and rig the same way. Describe the
+character in `scripts/art/characters.json`, then:
+
+```bash
+node scripts/art/gen-char.mjs <id> reference 1 2        # Ash's drawing edited into the character (a few seeds)
+node scripts/art/rig-char.mjs pose <id> base_reference_1.png   # the one you like: skeleton, then A-poses
+node scripts/art/rig-char.mjs cut <id> 0                 # A-pose 0 cut into rig parts
+```
+
+then add it to `public/art/packs/test/cast.json`, with a `height` that keeps Ash's pixel scale, and check it with
+`node scripts/playtests/check-rig.mjs out.png test <id>`. The reference images guiding each look (in
+`public/art/ref/chars/`) aren't in the repository; `gen-char.mjs text` works from the description alone.
 
 ## Contributing
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Four new characters in Ash's style: Raven, Doc, Kane and Jett. Pick one on the menu; Ash is still the default.
 - A page now counts as destroyed at 70% of its letters and 70% of its content (was 90% of each).
 
 ## 1.0.0 (2026-10-07)
