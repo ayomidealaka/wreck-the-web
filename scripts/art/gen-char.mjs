@@ -5,14 +5,14 @@
 // usage: node scripts/art/gen-char.mjs <id> <text|reference> <seed> [seed ...]
 import { pl, savePng, balance, ROOT } from './pixellab.mjs';
 import fs from 'node:fs';
-const [id, method = 'reference', ...seeds] = process.argv.slice(2);
+const [id, method = 'reference', ...rest] = process.argv.slice(2), seeds = rest.map(Number);
 const cfg = JSON.parse(fs.readFileSync(`${ROOT}/scripts/art/characters.json`, 'utf8'));
 const ch = cfg.characters.find(c => c.id === id);
-if (!ch || !['text', 'reference'].includes(method) || !seeds.length) throw new Error('usage: gen-char.mjs <id> <text|reference> <seed> ...');
+if (!ch || !['text', 'reference'].includes(method) || !seeds.length || !seeds.every(n => Number.isInteger(n) && n >= 0)) throw new Error('usage: gen-char.mjs <id> <text|reference> <seed> ...');
 const PACK = `${ROOT}/public/art/packs/test`, OUT = `${PACK}/chars/${id}/src/`;
 const b64 = f => fs.readFileSync(f).toString('base64');
 const description = `Turn this character into ${ch.look}. ${cfg.same}`;
-for (const seed of seeds.map(Number)) {
+for (const seed of seeds) {
   const job = await pl('POST', '/edit-image-pro-flash', {
     image: { type: 'base64', base64: b64(`${PACK}/src/base.png`), format: 'png' },
     method, description, no_background: true, seed,
@@ -21,7 +21,8 @@ for (const seed of seeds.map(Number)) {
   let st;
   for (let i = 0; i < 120; i++) { await new Promise(r => setTimeout(r, 5000)); st = await pl('GET', `/background-jobs/${job.background_job_id}`); if (!['processing', 'pending', 'queued'].includes(st.status)) break; }
   if (st.status !== 'completed') { console.log(`${id} ${method} ${seed}: ${st.status}`, JSON.stringify(st.last_response || st).slice(0, 300)); continue; }
-  const r = st.last_response, im = (r.images || [r.image])[0];
+  const r = st.last_response, im = (r.images || [r.image]).find(Boolean);
+  if (!im) { console.log(`${id} ${method} ${seed}: completed but no image in the response`, JSON.stringify(r).slice(0, 300)); continue; }
   savePng(im.base64 || im, `${OUT}base_${method}_${seed}.png`);
   console.log(`${ch.name} (${id}) ${method} seed ${seed}: saved`);
 }

@@ -65,6 +65,41 @@ function ik(root, target, L1, L2, prefer) {
   return prefer(j1) >= prefer(j2) ? j1 : j2;
 }
 
+// A pack's own weapon art (drawn at its characters' detail level), used instead of the shared pixel sprites. Each is
+// trimmed and its barrel tip found. The set belongs to the pack, not the character: every character in it fetches
+// and measures the same images once (keyed by directory) and only derives its own scale (RigCharacter.loadWeapons).
+const weaponSets = new Map();   // dir -> Promise<{ hi, hiJet, hiDroneSrc, extra }>
+function loadWeaponSet(dir) {
+  if (!weaponSets.has(dir)) weaponSets.set(dir, (async () => {
+    const trim = img => {
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+      for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 40) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+      const t = document.createElement('canvas'); t.width = x1 - x0 + 1; t.height = y1 - y0 + 1;
+      const tg = t.getContext('2d', { willReadFrequently: true }); tg.drawImage(c, -x0, -y0);
+      return { c: t, d: tg.getImageData(0, 0, t.width, t.height).data };
+    };
+    const set = { hi: {} };
+    await Promise.all([...WEAPONS.filter(w => w.held).map(w => w.artId || w.id), 'jetpack', 'drone', 'dronegun', 'jet', 'bomb'].map(async id => {
+      let img; try { img = await loadImg(`${dir}${id}.png`); } catch { return; }
+      const { c, d } = trim(img), W = c.width, H = c.height, op = (x, y) => d[(y * W + x) * 4 + 3] > 60;
+      if (id === 'jetpack') { set.hiJet = c; return; }
+      if (id === 'drone' || id === 'dronegun') { (set.hiDroneSrc ||= {})[id] = c; return; }
+      if (id === 'jet' || id === 'bomb') { (set.extra ||= {})[id] = c; return; }
+      // barrel tip: rightmost opaque column in the upper 70% (below that hang grips and magazines)
+      let m = { x: W, y: H / 2 };
+      outer: for (let x = W - 1; x >= 0; x--) { const ys = []; for (let y = 0; y <= H * 0.7; y++) if (op(x, y)) ys.push(y); if (ys.length) { m = { x: x + 1, y: ys[ys.length >> 1] + 0.5 }; break outer; } }
+      const w = WEAPONS.find(q => (q.artId || q.id) === id), u = W / (w.len || 30);   // hi-res px per shared-sprite px
+      const art = { img: c, inHand: c, w: W, h: H, muzzle: m, hold: { x: Math.round(W * w.holdAt), y: m.y + H * 0.13 } };
+      if (w.port) art.port = { x: Math.round(W * w.port), y: m.y - 1.5 * u };
+      set.hi[w.id] = { art, u, W, len: w.len || 30 };
+    }));
+    return set;
+  })());
+  return weaponSets.get(dir);
+}
+
 export class RigCharacter {
   constructor(def) { this.def = def; this.ready = false; this.aimset = true; }   // aimset: tells the player to use weaponMuzzle
 
@@ -108,33 +143,11 @@ export class RigCharacter {
     return this;
   }
 
-  // The pack's own weapon art (drawn at this character's detail level), used instead of the shared pixel sprites.
-  // Each is trimmed, its barrel tip found, and scaled so it is as long in the hands as the shared sprite would be.
+  // this character's view of the pack's weapon set: the shared art plus its own scale (its drawing px per weapon px)
   async loadWeapons(dir) {
-    const trim = img => {
-      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
-      const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0);
-      const d = g.getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
-      for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 40) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
-      const t = document.createElement('canvas'); t.width = x1 - x0 + 1; t.height = y1 - y0 + 1;
-      const tg = t.getContext('2d', { willReadFrequently: true }); tg.drawImage(c, -x0, -y0);
-      return { c: t, d: tg.getImageData(0, 0, t.width, t.height).data };
-    };
-    this.hi = {};
-    await Promise.all([...WEAPONS.filter(w => w.held).map(w => w.artId || w.id), 'jetpack', 'drone', 'dronegun', 'jet', 'bomb'].map(async id => {
-      let img; try { img = await loadImg(`${dir}${id}.png`); } catch { return; }
-      const { c, d } = trim(img), W = c.width, H = c.height, op = (x, y) => d[(y * W + x) * 4 + 3] > 60;
-      if (id === 'jetpack') { this.hiJet = c; return; }
-      if (id === 'drone' || id === 'dronegun') { (this.hiDroneSrc ||= {})[id] = c; return; }
-      if (id === 'jet' || id === 'bomb') { (this.extra ||= {})[id] = c; return; }
-      // barrel tip: rightmost opaque column in the upper 70% (below that hang grips and magazines)
-      let m = { x: W, y: H / 2 };
-      outer: for (let x = W - 1; x >= 0; x--) { const ys = []; for (let y = 0; y <= H * 0.7; y++) if (op(x, y)) ys.push(y); if (ys.length) { m = { x: x + 1, y: ys[ys.length >> 1] + 0.5 }; break outer; } }
-      const w = WEAPONS.find(q => (q.artId || q.id) === id), u = W / (w.len || 30);   // hi-res px per shared-sprite px
-      const art = { img: c, inHand: c, w: W, h: H, muzzle: m, hold: { x: Math.round(W * w.holdAt), y: m.y + H * 0.13 } };
-      if (w.port) art.port = { x: Math.round(W * w.port), y: m.y - 1.5 * u };
-      this.hi[w.id] = { art, u, g: (this.def.gunScale || 1.28) * (w.len || 30) / W / this.k };
-    }));
+    const set = await loadWeaponSet(dir);
+    this.hiJet = set.hiJet; this.hiDroneSrc = set.hiDroneSrc; this.extra = set.extra;
+    this.hi = Object.fromEntries(Object.entries(set.hi).map(([id, { art, u, W, len }]) => [id, { art, u, g: (this.def.gunScale || 1.28) * len / W / this.k }]));
   }
   // weapon art + scale for a weapon: the pack's own if it has one, else the shared sprite
   artFor(w) { return this.hi?.[w.id] || { art: w.art, u: 1, g: this.gun }; }
