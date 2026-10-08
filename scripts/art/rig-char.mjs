@@ -22,8 +22,11 @@ if (step === 'pose') {
   console.log(`${ch.name}: skeleton estimated (${r.keypoints.length} points)`);
   run('rig-pose.mjs', DIR, `pixel art character, side view facing right: ${ch.look}`);
 } else {
-  const k = Number(arg), W = 160, H = 256;
-  const frame = JSON.parse(fs.readFileSync(SRC + 'apose.json', 'utf8'))[k];
+  const k = Number(arg), frames = JSON.parse(fs.readFileSync(SRC + 'apose.json', 'utf8'));
+  if (!Number.isInteger(k) || k < 0 || k >= frames.length || !fs.existsSync(`${SRC}apose_${k}.png`)) throw new Error(`no A-pose ${arg}: pick 0..${frames.length - 1}`);
+  // apose.json keypoints are px of the base drawing (rig-pose.mjs); cut-rig wants them as fractions of the image
+  const [W, H] = execFileSync('magick', ['identify', '-format', '%w %h', SRC + 'base.png']).toString().split(' ').map(Number);
+  const frame = frames[k];
   fs.copyFileSync(`${SRC}apose_${k}.png`, SRC + 'rigsrc.png');
   fs.writeFileSync(SRC + 'rigsrc_skeleton.json', JSON.stringify(frame.keypoints.map(p => ({ label: p.label, x: p.x / W, y: p.y / H, z_index: 0 })), null, 1));
   run('cut-rig.mjs', DIR, 'rigsrc');

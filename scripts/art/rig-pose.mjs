@@ -4,11 +4,12 @@
 // requested skeletons, which become the rig's joints).
 // usage: node scripts/art/rig-pose.mjs public/art/packs/test "<character description>"
 import { pl, savePng, balance } from './pixellab.mjs';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 const [PACK = 'public/art/packs/test', DESC = 'a man'] = process.argv.slice(2);
 const SRC = `${PACK}/src/`;
 const base = JSON.parse(fs.readFileSync(SRC + 'base_skeleton.json', 'utf8'));
-const W = 160, H = 256;
+const [W, H] = execFileSync('magick', ['identify', '-format', '%w %h', SRC + 'base.png']).toString().split(' ').map(Number);   // apose.json keypoints are in these px
 const J = Object.fromEntries(base.map(k => [k.label, { x: k.x * W, y: k.y * H }]));
 const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const frames = [30, 40, 22].map(deg => {

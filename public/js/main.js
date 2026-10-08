@@ -140,7 +140,7 @@ async function saveClip() {
 // and the pick is remembered per browser. The picked one loads first and the rest follow. A game never starts as a
 // stick figure just because the art was slow (e.g. over a tunnel): it waits for the pick, and if that still runs late
 // the sprite is swapped in when it arrives.
-const PACK = 'test', PICK_KEY = 'wtw-character:test';
+const PACK = 'test', PICK_KEY = `wtw-character:${PACK}`;
 const cast = new Map();   // id -> Promise<RigCharacter | null>
 let chosenId = null, character = null;
 const weaponArt = loadWeaponArt().catch(e => console.warn('weapon art unavailable', e));
@@ -156,22 +156,31 @@ const castReady = (async () => {
   let saved = null;
   try { saved = localStorage.getItem(PICK_KEY); } catch {}
   if (!list.some(d => d.id === saved)) saved = list[0]?.id;              // Ash: first in cast.json
-  const root = document.getElementById('cast');
-  for (const def of [...list].sort((x, y) => (y.id === saved) - (x.id === saved))) {
-    cast.set(def.id, new RigCharacter(def).load().catch(e => {
-      console.warn('character unavailable', def.id, e); root.querySelector(`button[data-id="${def.id}"]`)?.remove(); return null;
-    }));
-  }
+  const root = document.getElementById('cast'), faces = new Map();
   for (const def of list) {
     const b = document.createElement('button'); b.type = 'button'; b.dataset.id = def.id; b.title = def.name;
-    const face = document.createElement('canvas'); face.style.width = face.style.height = '64px';
-    cast.get(def.id).then(c => c && face.replaceWith(Object.assign(c.faceCanvas(4), { style: face.style.cssText })));
+    const face = document.createElement('canvas'); face.style.width = face.style.height = '64px'; faces.set(def.id, face);
     b.append(face, Object.assign(document.createElement('span'), { textContent: def.name }));
     b.onclick = () => choose(def.id);
     root.append(b);
   }
   document.getElementById('castWrap').hidden = list.length < 2;          // no choice to make with one character
-  if (list.length) choose(saved);
+  const load = def => {
+    const p = new RigCharacter(def).load().catch(e => {
+      console.warn('character unavailable', def.id, e); root.querySelector(`button[data-id="${def.id}"]`)?.remove();
+      if (chosenId === def.id && def.id !== list[0].id) { if (!cast.has(list[0].id)) load(list[0]); choose(list[0].id); }   // the pick is broken: Ash instead
+      return null;
+    });
+    cast.set(def.id, p);
+    p.then(c => { const f = faces.get(def.id); if (c && f) f.replaceWith(Object.assign(c.faceCanvas(4), { style: f.style.cssText })); });
+    return p;
+  };
+  // the picked one on its own first, so its art isn't queued behind the others'; the rest follow in the background
+  const first = list.find(d => d.id === saved);
+  if (first) { load(first); choose(saved); await cast.get(saved); }
+  Promise.all(list.filter(d => d !== first && !cast.has(d.id)).map(load)).then(() => {
+    document.getElementById('castWrap').hidden = root.querySelectorAll('button').length < 2;   // fewer than two left: nothing to pick
+  });
 })().catch(e => console.warn('cast unavailable', e));
 const characterReady = () => castReady.then(chosenReady);
 
