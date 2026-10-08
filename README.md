@@ -1,13 +1,13 @@
 # Wreck the Web
 
+![Ash wrecking the Wikipedia article on stick figures: an Uzi, rockets, the rail laser, an airstrike and a mini nuke](docs/demo.gif)
+
 [![GitHub stars](https://img.shields.io/github/stars/ayomidealaka/wreck-the-web?style=social)](https://github.com/ayomidealaka/wreck-the-web/stargazers)
 [![Release](https://img.shields.io/github/v/release/ayomidealaka/wreck-the-web)](https://github.com/ayomidealaka/wreck-the-web/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Type in a website and it becomes a level. Run across the page, shoot the words off it, blow holes through the
 pictures and knock whole sections loose until the thing comes apart.
-
-![Wikipedia being wrecked over the synthwave city](docs/screenshot.png)
 
 If it made you laugh, [give it a star](https://github.com/ayomidealaka/wreck-the-web) so more people find it. What
 changed in each version is in the [changelog](CHANGELOG.md).
