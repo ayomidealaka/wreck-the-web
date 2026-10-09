@@ -118,7 +118,8 @@ async function load(raw) {
     document.activeElement?.blur(); // the address box kept focus, which swallowed keys like Esc
   } catch (e) {
     show('menu'); showError(e.message);
-    track('render failed', { site: siteOf(url), reason: e.message.slice(0, 80) });
+    // the reason without the "(net::ERR_… at https://…)" detail, which would carry the typed address
+    track('render failed', { site: siteOf(url), reason: String(e?.message ?? e).replace(/\s*\([^)]*\)/g, '').slice(0, 80) });
   } finally { clearInterval(spin); }
 }
 
@@ -127,12 +128,12 @@ async function saveClip() {
   toast('Saving clip…', 8000);
   try {
     const { blob, seconds } = await game.recorder.save();
-    const host = (() => { try { return new URL(game.meta.url).hostname.replace(/^www\./, ''); } catch { return 'web'; } })();
+    const host = siteOf(game.meta.url);
     const name = `wreck-${host}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.${game.recorder.ext}`;
     const file = new File([blob], name, { type: blob.type });
     if (input.touch && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: `I wrecked ${host}` }).catch(() => {});
-      toast(`Clip ready (${Math.round(seconds)}s)`); track('clip saved', { seconds: Math.round(seconds), how: 'share' });
+      const shared = await navigator.share({ files: [file], title: `I wrecked ${host}` }).then(() => true, () => false);   // false: the share sheet was dismissed
+      toast(`Clip ready (${Math.round(seconds)}s)`); if (shared) track('clip saved', { seconds: Math.round(seconds), how: 'share' });
     } else {
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 60000);
@@ -385,7 +386,7 @@ class Game {
     this.progress = this.destruction();
     if (!this.ending && this.progress >= WIN_AT) {
       this.ending = { t: 0, blasts: 0 };
-      const site = (() => { try { return new URL(this.meta.url).hostname.replace(/^www\./, ''); } catch { return this.meta.url; } })();
+      const site = siteOf(this.meta.url);
       this.reward(progress.destroyed({ site, seconds: this.t, used: this.arsenal.used }));
       track('page destroyed', { site, seconds: Math.round(this.t), character: chosenId, weapons: [...this.arsenal.used].sort().join(' ') });
     }

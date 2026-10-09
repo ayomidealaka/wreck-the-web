@@ -15,13 +15,15 @@ const RATE_PER_MIN = Number(process.env.RATE_LIMIT_PER_MIN) || 12;   // fresh re
 const CACHE_BYTES = (Number(process.env.CACHE_MB) || 512) * 1e6;    // level images kept in memory, in total
 // Optional analytics: with both set, the menu page gets a <script> tag for a tracker like Umami's. The script URL
 // must be https and the site id a UUID, so the tag can be written without escaping. Unset = no analytics at all.
+// async: the game's own script never waits on the analytics host. exclude-search: the tracker's automatic page views
+// never carry the ?url= query, so the websites players type stay out of analytics (events send a hostname only).
 const ANALYTICS = (() => {
   const script = process.env.ANALYTICS_SCRIPT || '', site = process.env.ANALYTICS_SITE || '';
   if (!script && !site) return null;
   if (!/^https:\/\/[\w.-]+(:\d+)?\/[\w./-]*$/.test(script) || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(site)) {
     console.warn('analytics: ANALYTICS_SCRIPT must be an https URL and ANALYTICS_SITE a UUID; ignoring both'); return null;
   }
-  return Buffer.from(`<script defer src="${script}" data-website-id="${site}"></script>\n</head>`);
+  return Buffer.from(`<script async src="${script}" data-website-id="${site}" data-exclude-search="true" data-exclude-hash="true"></script>\n</head>`);
 })();
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -106,7 +108,7 @@ const server = http.createServer(async (req, res) => {
     if (!file.startsWith(ROOT + path.sep)) return send(res, 403, 'Forbidden', 'text/plain');
     let body = await fs.readFile(file).catch(() => null);
     if (!body) return send(res, 404, 'Not found', 'text/plain');
-    if (ANALYTICS && rel === '/index.html') { const i = body.indexOf('</head>'); if (i >= 0) body = Buffer.concat([body.subarray(0, i), ANALYTICS, body.subarray(i + 7)]); }
+    if (ANALYTICS && file === path.join(ROOT, 'index.html')) { const i = body.indexOf('</head>'); if (i >= 0) body = Buffer.concat([body.subarray(0, i), ANALYTICS, body.subarray(i + 7)]); }
     return send(res, 200, body, TYPES[path.extname(file)] || 'application/octet-stream', { 'Cache-Control': 'no-cache' });
   } catch (e) {
     // our own messages go to the player as they are; anything else (Chrome, Puppeteer, bugs) is logged, not echoed
