@@ -117,8 +117,10 @@ service, an ingress with cert-manager TLS and the network policy that keeps the 
 ## Privacy
 
 The public site at wreck-the-web.retrodeep.app uses self-hosted [Umami](https://umami.is) analytics: cookieless, no
-consent banner, and nothing that identifies a player, just visits and game events (site wrecked, character, weapons,
-time). Your own copy sends nothing anywhere unless you configure a tracker (see `deploy/README.md`).
+consent banner, and nothing that identifies a player, just page views (without the address you typed) and game
+events (site wrecked, character, weapons, time). Your own copy sends nothing to any analytics service unless you
+configure a tracker (see `deploy/README.md`). Two third-party requests remain either way: the Silkscreen font from
+Google Fonts, and the star count on the menu from the GitHub API.
 
 ## Testing
 
