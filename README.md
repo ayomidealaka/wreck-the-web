@@ -114,6 +114,12 @@ service, an ingress with cert-manager TLS and the network policy that keeps the 
 `deploy/deploy.sh`, which builds, tests, pushes and rolls it out. You build the image into your own registry;
 [deploy/README.md](deploy/README.md) walks through it, including running it with plain Docker.
 
+## Privacy
+
+The public site at wreck-the-web.retrodeep.app uses self-hosted [Umami](https://umami.is) analytics: cookieless, no
+consent banner, and nothing that identifies a player, just visits and game events (site wrecked, character, weapons,
+time). Your own copy sends nothing anywhere unless you configure a tracker (see `deploy/README.md`).
+
 ## Testing
 
 Everything under `scripts/playtests/` drives the game in headless Chrome against a running server and prints what it

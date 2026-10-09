@@ -43,6 +43,12 @@ spec:
             - name: http
               containerPort: 4600
               protocol: TCP
+          # Optional analytics (ANALYTICS_SCRIPT + ANALYTICS_SITE): if a ConfigMap by this name exists it's loaded, if not
+          # the game runs without analytics. Ours lives outside this repo; see deploy/README.md.
+          envFrom:
+            - configMapRef:
+                name: wreck-the-web-analytics
+                optional: true
           env:
             - name: NODE_ENV
               value: production
@@ -53,12 +59,11 @@ spec:
             # one proxy (ingress-nginx) appends to X-Forwarded-For
             - name: TRUST_PROXY
               value: "1"
-            # Fresh renders per client per minute. On this cluster ingress-nginx's service has
-            # externalTrafficPolicy: Cluster, so the client address nginx sees (and forwards) is the same for everyone:
-            # this is effectively a limit for all players together. 12 would be far too low for that; with
-            # externalTrafficPolicy: Local it becomes a real per-player limit and can go back to 12.
+            # Fresh renders per player per minute. Needs the ingress to pass real client addresses (ingress-nginx's
+            # Service with externalTrafficPolicy: Local); with the default Cluster policy everyone shares one address
+            # and this becomes a limit for all players together, so raise it in that case.
             - name: RATE_LIMIT_PER_MIN
-              value: "60"
+              value: "12"
             - name: CACHE_MB
               value: "384"
             # Chrome's own sandbox needs user namespaces, which the RuntimeDefault seccomp profile blocks ("No usable

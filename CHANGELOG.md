@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Optional analytics: set `ANALYTICS_SCRIPT` and `ANALYTICS_SITE` and the menu page loads a tracker (Umami-style);
+  the game reports games started, pages destroyed, rank-ups and saved clips, with nothing that identifies a player.
 - Four new characters in Ash's style: Raven, Doc, Kane and Jett. Pick one on the menu; Ash is still the default.
 - A page now counts as destroyed at 70% of its letters and 70% of its content (was 90% of each).
 
