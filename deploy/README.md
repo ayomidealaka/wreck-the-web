@@ -123,6 +123,7 @@ Environment variables, set in `deployment.yaml`:
 | `RENDER_TIMEOUT_MS` | `45000` | the most one render may take |
 | `CHROME_NO_SANDBOX` | unset | `1` turns Chrome's own sandbox off: see the next section |
 | `CHROME_PATH` | | the Chromium binary (set in the image) |
+| `ANALYTICS_SCRIPT`, `ANALYTICS_SITE` | unset | optional: an https tracker script URL and a site UUID. With both set, the menu page gets `<script defer src=… data-website-id=…>`, which is how [Umami](https://umami.is) and similar trackers are installed. Unset, the game has no analytics. `deployment.yaml` loads them from a ConfigMap named `wreck-the-web-analytics` if one exists. |
 
 Rendered levels are kept in the pod's memory and fetched in two requests (the level, then its image), so run **one
 replica**, or add sticky sessions to your ingress before scaling out. One pod renders two websites at a time.
@@ -143,16 +144,17 @@ away more than they get back.
 
 ## Client addresses and rate limiting
 
-Rate limiting is per client, and the server can only tell clients apart if your ingress passes their real addresses
-on. With ingress-nginx, `TRUST_PROXY=1` reads the address nginx appends to `X-Forwarded-For`. But if your
-ingress controller's Service has `externalTrafficPolicy: Cluster` (the default, and what k3s's built-in load balancer
-does), nginx itself sees one internal address for everyone, so every player shares one limit. Either:
+Rate limiting is per player, and the server can only tell players apart if your ingress passes their real addresses
+on. With ingress-nginx, `TRUST_PROXY=1` reads the address nginx appends to `X-Forwarded-For`. But if the ingress
+controller's Service has `externalTrafficPolicy: Cluster` (the default, and what k3s's built-in load balancer does),
+nginx itself sees one internal address for everyone, so every player shares one limit. Either:
 
 - set `externalTrafficPolicy: Local` on the ingress controller's Service, so real addresses come through (this applies
-  to every app behind that controller), and keep `RATE_LIMIT_PER_MIN` at 12; or
-- leave it and raise `RATE_LIMIT_PER_MIN` (it's then a limit for all players together; `deployment.yaml` uses 60).
+  to every app behind that controller; on a single node it's safe), and keep `RATE_LIMIT_PER_MIN` at 12; or
+- leave it and raise `RATE_LIMIT_PER_MIN` (it's then a limit for all players together).
 
-Behind a CDN or another proxy in front of the ingress, count it in `TRUST_PROXY` (2 for Cloudflare + ingress-nginx).
+Our cluster uses the first. Behind a CDN or another proxy in front of the ingress, count it in `TRUST_PROXY` (2 for
+Cloudflare + ingress-nginx).
 
 ## Running it without Kubernetes
 

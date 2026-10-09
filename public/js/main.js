@@ -40,6 +40,11 @@ function resize() {
 }
 addEventListener('resize', resize); resize();
 
+// analytics events, when the page has a tracker (the server injects one if it's configured; see server/index.js).
+// Nothing identifies the player: a site name, a character, a weapon list, a time.
+const track = (name, data) => { try { window.umami?.track(name, data); } catch {} };
+const siteOf = url => { try { return new URL(/^[a-z]+:\/\//i.test(url) ? url : `https://${url}`).hostname.replace(/^www\./, ''); } catch { return 'unknown'; } };
+
 // ------------------------------------------------------------------ UI
 const screens = { menu: $('#menu'), loading: $('#loading'), pause: $('#pause'), results: $('#results') };
 function show(name) { for (const [k, el] of Object.entries(screens)) el.hidden = k !== name; if (name === 'menu') renderProfile(); }
@@ -107,11 +112,13 @@ async function load(raw) {
     await Promise.race([Promise.all([characterReady(), weaponArt]), new Promise(r => setTimeout(r, 30000))]);
     game?.destroy();
     game = new Game(meta, bitmap);
+    track('game started', { site: siteOf(meta.url), character: chosenId, mode });
     history.replaceState(null, '', `?url=${encodeURIComponent(url)}`);
     show(null); setHud(true);
     document.activeElement?.blur(); // the address box kept focus, which swallowed keys like Esc
   } catch (e) {
     show('menu'); showError(e.message);
+    track('render failed', { site: siteOf(url), reason: e.message.slice(0, 80) });
   } finally { clearInterval(spin); }
 }
 
@@ -125,11 +132,11 @@ async function saveClip() {
     const file = new File([blob], name, { type: blob.type });
     if (input.touch && navigator.canShare?.({ files: [file] })) {
       await navigator.share({ files: [file], title: `I wrecked ${host}` }).catch(() => {});
-      toast(`Clip ready (${Math.round(seconds)}s)`);
+      toast(`Clip ready (${Math.round(seconds)}s)`); track('clip saved', { seconds: Math.round(seconds), how: 'share' });
     } else {
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-      toast(`Saved a ${Math.round(seconds)}s clip: <b>${name}</b>`);
+      toast(`Saved a ${Math.round(seconds)}s clip: <b>${name}</b>`); track('clip saved', { seconds: Math.round(seconds), how: 'download' });
     }
   } catch (e) { toast(e.message); }
 }
@@ -380,6 +387,7 @@ class Game {
       this.ending = { t: 0, blasts: 0 };
       const site = (() => { try { return new URL(this.meta.url).hostname.replace(/^www\./, ''); } catch { return this.meta.url; } })();
       this.reward(progress.destroyed({ site, seconds: this.t, used: this.arsenal.used }));
+      track('page destroyed', { site, seconds: Math.round(this.t), character: chosenId, weapons: [...this.arsenal.used].sort().join(' ') });
     }
   }
   // the ending: the game never stops. A "PAGE DESTROYED" banner, then the results float over the page
@@ -396,7 +404,7 @@ class Game {
     if (r.xp > 0) { this.runXp += r.xp; this.xpPop = { n: (this.xpPop && this.xpPop.t < 1 ? this.xpPop.n : 0) + r.xp, t: 0 }; }
     for (const o of r.done) { this.notes.push({ o, t: 0 }); audio.challenge(); }
     // several ranks at once: show just the one landed on (and drop any not yet shown that it passes)
-    if (r.ups.length) { this.medals = this.medals.filter(m => m.t > 0); this.medals.push({ rank: r.ups[r.ups.length - 1], t: 0 }); }
+    if (r.ups.length) { this.medals = this.medals.filter(m => m.t > 0); this.medals.push({ rank: r.ups[r.ups.length - 1], t: 0 }); track('rank up', { rank: RANKS[r.ups[r.ups.length - 1]].name }); }
   }
   showResults() {
     const s = this.arsenal.stats, mins = Math.floor(this.t / 60), secs = Math.floor(this.t % 60);
